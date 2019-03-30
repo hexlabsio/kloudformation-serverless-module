@@ -29,7 +29,7 @@ import io.kloudformation.resource.aws.iam.role
 import io.kloudformation.resource.aws.s3.Bucket
 import io.kloudformation.resource.aws.s3.bucket
 
-class Serverless(val deploymentBucket: Bucket, val globalRole: Role?, val functions: List<ServerlessFunction>) : Module {
+class Serverless(val deploymentBucket: Bucket?, val globalRole: Role?, val functions: List<ServerlessFunction>) : Module {
 
     open class PrivateConfig(val securityGroups: Value<List<Value<String>>>? = null, val subnetIds: Value<List<Value<String>>>? = null)
     object NoPrivateConfig : PrivateConfig()
@@ -46,18 +46,20 @@ class Serverless(val deploymentBucket: Bucket, val globalRole: Role?, val functi
     class Builder(
         val serviceName: String,
         val stage: String,
+        val bucket: Value<String>? = null,
         val privateConfig: PrivateConfig? = null
     ) : ModuleBuilder<Serverless, Parts>(Parts()) {
 
         override fun KloudFormation.buildModule(): Parts.() -> Serverless = {
-            val bucketResource = deploymentBucket(NoProps) { props ->
+            val bucketResource = if(bucket == null) deploymentBucket(NoProps) { props ->
                 bucket {
                     modifyBuilder(props)
                 }
-            }
+            } else null
+            val bucketArn = bucketResource?.ref() ?: bucket!!
             val roleResource = roleFor(serviceName, stage, globalRole)
             val functions = serverlessFunction.modules().mapNotNull {
-                it.module(ServerlessFunction.Predefined(serviceName, stage, bucketResource, roleResource, privateConfig))()
+                it.module(ServerlessFunction.Predefined(serviceName, stage, bucketArn, roleResource, privateConfig))()
             }
             Serverless(bucketResource, roleResource, functions)
         }
@@ -106,6 +108,7 @@ class Serverless(val deploymentBucket: Bucket, val globalRole: Role?, val functi
 fun KloudFormation.serverless(
     serviceName: String,
     stage: String = "dev",
+    bucketArn: Value<String>? = null,
     privateConfig: Serverless.PrivateConfig? = null,
     partBuilder: Serverless.Parts.() -> Unit = {}
-) = builder(Serverless.Builder(serviceName, stage, privateConfig), partBuilder)
+) = builder(Serverless.Builder(serviceName, stage, bucketArn, privateConfig), partBuilder)

@@ -19,7 +19,7 @@ import io.kloudformation.module.optionalModification
 
 class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
 
-    class Predefined(var serviceName: String, var stage: String, var deploymentBucket: Bucket, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?) : Properties
+    class Predefined(var serviceName: String, var stage: String, var deploymentBucketArn: Value<String>, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?) : Properties
     class Props(val functionId: String, val codeLocationKey: Value<String>, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties
 
     class Parts {
@@ -43,7 +43,7 @@ class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: 
                 }
             }
             val code = Code(
-                    s3Bucket = pre.deploymentBucket.ref(),
+                    s3Bucket = pre.deploymentBucketArn,
                     s3Key = props.codeLocationKey
             )
             if (pre.globalRole == null) lambdaRole.keep()
