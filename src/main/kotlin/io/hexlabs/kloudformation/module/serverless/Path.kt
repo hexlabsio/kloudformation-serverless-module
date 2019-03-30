@@ -2,17 +2,21 @@ package io.hexlabs.kloudformation.module.serverless
 
 import io.kloudformation.KloudFormation
 import io.kloudformation.Value
+import io.kloudformation.module.Modification
 import io.kloudformation.resource.aws.apigateway.Resource
 import io.kloudformation.resource.aws.apigateway.resource
-import io.kloudformation.module.*
+import io.kloudformation.module.Module
+import io.kloudformation.module.Properties
+import io.kloudformation.module.SubModuleBuilder
+import io.kloudformation.module.modification
 
-class Path(val resource: Resource): Module {
+class Path(val resource: Resource) : Module {
 
     class Predefined(var parentId: Value<String>, var restApi: Value<String>) : Properties
     class Props(val path: Value<String>) : Properties
 
     class Parts(
-            val httpResource: Modification<Resource.Builder, Resource, ResourceProps> = modification()
+        val httpResource: Modification<Resource.Builder, Resource, ResourceProps> = modification()
     ) {
         class ResourceProps(var path: Value<String>, var parentId: Value<String>, var restApi: Value<String>) : Properties
     }
