@@ -1,2 +1,3 @@
-# kloudformation-serverless-module
-A Module for Kloudformation that makes working with Lambda simple
+# KloudFormation Serverless Module
+
+A Module for KloudFormation that makes working with AWS Lambda in CloudFormation simple
