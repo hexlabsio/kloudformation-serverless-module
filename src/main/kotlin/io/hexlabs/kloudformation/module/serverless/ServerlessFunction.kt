@@ -8,7 +8,6 @@ import io.kloudformation.resource.aws.lambda.Function
 import io.kloudformation.resource.aws.lambda.function
 import io.kloudformation.resource.aws.logs.LogGroup
 import io.kloudformation.resource.aws.logs.logGroup
-import io.kloudformation.resource.aws.s3.Bucket
 import io.kloudformation.module.Module
 import io.kloudformation.module.NoProps
 import io.kloudformation.module.Properties

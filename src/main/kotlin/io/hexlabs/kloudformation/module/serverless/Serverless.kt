@@ -51,7 +51,7 @@ class Serverless(val deploymentBucket: Bucket?, val globalRole: Role?, val funct
     ) : ModuleBuilder<Serverless, Parts>(Parts()) {
 
         override fun KloudFormation.buildModule(): Parts.() -> Serverless = {
-            val bucketResource = if(bucket == null) deploymentBucket(NoProps) { props ->
+            val bucketResource = if (bucket == null) deploymentBucket(NoProps) { props ->
                 bucket {
                     modifyBuilder(props)
                 }
