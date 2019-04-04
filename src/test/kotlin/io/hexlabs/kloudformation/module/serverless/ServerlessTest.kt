@@ -1,8 +1,6 @@
 package io.hexlabs.kloudformation.module.serverless
 
 import io.kloudformation.model.KloudFormationTemplate
-import io.kloudformation.model.iam.policyDocument
-import io.kloudformation.property.aws.iam.role.policy
 import io.kloudformation.resource.aws.s3.bucket
 import io.kloudformation.toYaml
 import org.junit.jupiter.api.Test

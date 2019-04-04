@@ -16,7 +16,6 @@ import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.SubModules
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
-import io.kloudformation.resource.aws.lambda.Permission
 
 class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
 
@@ -30,10 +29,10 @@ class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: 
         val lambdaFunction = modification<Function.Builder, Function, LambdaProps>()
         val http = SubModules({ pre: Http.Predefined, props: Http.Props -> Http.Builder(pre, props) })
         fun http(
-                cors: Path.CorsConfig? = null,
-                vpcEndpoint: Value<String>? = null,
-                modifications: Modification<Http.Parts, Http, Http.Predefined>.() -> Unit = {}
-        ) = http(Http.Props(cors,vpcEndpoint),modifications)
+            cors: Path.CorsConfig? = null,
+            vpcEndpoint: Value<String>? = null,
+            modifications: Modification<Http.Parts, Http, Http.Predefined>.() -> Unit = {}
+        ) = http(Http.Props(cors, vpcEndpoint), modifications)
     }
 
     class Builder(

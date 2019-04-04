@@ -40,12 +40,12 @@ class Serverless(val deploymentBucket: Bucket?, val globalRole: Role?, val funct
     ) {
         val serverlessFunction = SubModules({ pre: ServerlessFunction.Predefined, props: ServerlessFunction.Props -> ServerlessFunction.Builder(pre, props) })
         fun serverlessFunction(
-                functionId: String,
-                codeLocationKey: Value<String>,
-                handler: Value<String>,
-                runtime: Value<String>,
-                privateConfig: Serverless.PrivateConfig? = null,
-                modifications: Modification<ServerlessFunction.Parts, ServerlessFunction, ServerlessFunction.Predefined>.() -> Unit = {}
+            functionId: String,
+            codeLocationKey: Value<String>,
+            handler: Value<String>,
+            runtime: Value<String>,
+            privateConfig: Serverless.PrivateConfig? = null,
+            modifications: Modification<ServerlessFunction.Parts, ServerlessFunction, ServerlessFunction.Predefined>.() -> Unit = {}
         ) = serverlessFunction(ServerlessFunction.Props(functionId, codeLocationKey, handler, runtime, privateConfig), modifications)
         data class RoleProps(var assumedRolePolicyDocument: PolicyDocument) : Properties
     }

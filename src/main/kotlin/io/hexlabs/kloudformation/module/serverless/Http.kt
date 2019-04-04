@@ -38,13 +38,13 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
         val lambdaPermission = modification<Permission.Builder, Permission, NoProps>()
         val path = SubModules({ pre: Path.Predefined, props: Path.Props -> Path.Builder(pre, props) })
         fun path(
-                pathBuilder: Path.PathBuilder.() -> Path.PathBuilder = {this},
-                modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
-        ) = path(Path.Props(pathBuilder),modifications)
+            pathBuilder: Path.PathBuilder.() -> Path.PathBuilder = { this },
+            modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
+        ) = path(Path.Props(pathBuilder), modifications)
         fun path(
-                path: String,
-                modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
-        ) = path(Path.Props(path),modifications)
+            path: String,
+            modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
+        ) = path(Path.Props(path), modifications)
     }
 
     class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<Http, Parts, Predefined, Props>(pre, Parts()) {

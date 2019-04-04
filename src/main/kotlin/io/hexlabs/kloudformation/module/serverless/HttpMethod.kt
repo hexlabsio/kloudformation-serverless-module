@@ -36,7 +36,7 @@ class HttpMethod(val method: io.kloudformation.resource.aws.apigateway.Method, v
     class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<HttpMethod, Parts, Predefined, Props>(pre, Parts()) {
         override fun KloudFormation.buildModule(): Parts.() -> HttpMethod = {
             val method = httpMethod(Parts.MethodProps(props.httpMethod)) { props ->
-                method(props.httpMethod, pre.resourceId, pre.restApiId){
+                method(props.httpMethod, pre.resourceId, pre.restApiId) {
                     requestParameters(emptyMap())
                     apiKeyRequired(false)
                     authorizationType("None")
