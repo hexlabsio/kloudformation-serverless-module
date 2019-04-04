@@ -1,0 +1,18 @@
+version: 2
+
+jobs:
+  build:
+    working_directory: ~/kloudformation-serverless-module
+    docker:
+    - image: circleci/openjdk:8-jdk-browsers
+    steps:
+    - checkout
+    - restore_cache:
+        keys:
+        - gradle-{{ checksum "build.gradle.kts" }}
+    - run: ./gradlew clean build -DBUILD_NUM=$CIRCLE_BUILD_NUM
+    - run: ./gradlew bintrayUpload -DBUILD_NUM=$CIRCLE_BUILD_NUM -DBINTRAY_KEY=$BINTRAY_KEY
+    - save_cache:
+        paths:
+        - ~/.gradle
+        key: gradle-{{ checksum "build.gradle.kts" }}
