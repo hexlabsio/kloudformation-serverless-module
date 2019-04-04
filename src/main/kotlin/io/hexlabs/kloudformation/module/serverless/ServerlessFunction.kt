@@ -2,6 +2,7 @@ package io.hexlabs.kloudformation.module.serverless
 
 import io.kloudformation.KloudFormation
 import io.kloudformation.Value
+import io.kloudformation.module.Modification
 import io.kloudformation.property.aws.lambda.function.Code
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.lambda.Function
@@ -15,6 +16,7 @@ import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.SubModules
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
+import io.kloudformation.resource.aws.lambda.Permission
 
 class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
 
@@ -27,6 +29,11 @@ class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: 
         val lambdaRole = optionalModification<Role.Builder, Role, Serverless.Parts.RoleProps>(absent = true)
         val lambdaFunction = modification<Function.Builder, Function, LambdaProps>()
         val http = SubModules({ pre: Http.Predefined, props: Http.Props -> Http.Builder(pre, props) })
+        fun http(
+                cors: Path.CorsConfig? = null,
+                vpcEndpoint: Value<String>? = null,
+                modifications: Modification<Http.Parts, Http, Http.Predefined>.() -> Unit = {}
+        ) = http(Http.Props(cors,vpcEndpoint),modifications)
     }
 
     class Builder(
@@ -62,7 +69,7 @@ class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: 
                 }
             }
             val httpEvents = http.modules().mapNotNull {
-                it.module(Http.Predefined(pre.serviceName, pre.stage))()
+                it.module(Http.Predefined(pre.serviceName, pre.stage, lambdaResource.Arn()))()
             }
             ServerlessFunction(logGroupResource, roleResource, lambdaResource, httpEvents)
         }

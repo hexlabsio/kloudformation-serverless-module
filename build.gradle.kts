@@ -58,7 +58,7 @@ configure<KtlintExtension> {
 configure<GithookExtension> {
     githook {
         hooks {
-            create("pre-push") {
+            create("pre-commit") {
                 task = "build"
             }
         }

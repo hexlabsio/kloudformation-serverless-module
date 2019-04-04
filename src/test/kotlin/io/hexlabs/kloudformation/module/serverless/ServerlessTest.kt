@@ -1,14 +1,17 @@
 package io.hexlabs.kloudformation.module.serverless
 
 import io.kloudformation.model.KloudFormationTemplate
+import io.kloudformation.model.iam.policyDocument
+import io.kloudformation.property.aws.iam.role.policy
 import io.kloudformation.resource.aws.s3.bucket
 import io.kloudformation.toYaml
 import org.junit.jupiter.api.Test
+import kotlin.test.expect
 
 class ServerlessTest {
 
     @Test
-    fun `should have bucket and bucket policy by default`() {
+    fun `should have bucket bucket policy logGroup Role and Function by default`() {
         val template = KloudFormationTemplate.create {
             val myBucket = bucket("Bob") { bucketName("Bob") }
             serverless("testService", bucketArn = myBucket.ref()) {
@@ -19,6 +22,114 @@ class ServerlessTest {
                         runtime = +"nodejs8.10")) {
                 }
             } }.toYaml()
-        println(template)
+        expect("""---
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  Bob:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: "Bob"
+  LogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: "/aws/lambda/testService-dev-myFunction"
+  Role:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: "Allow"
+          Action:
+          - "sts:AssumeRole"
+          Principal:
+            Service:
+            - "lambda.amazonaws.com"
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+      - Fn::Join:
+        - ""
+        - - "arn:"
+          - Ref: "AWS::Partition"
+          - ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Path: "/"
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Effect: "Allow"
+            Action:
+            - "logs:CreateLogStream"
+            Resource:
+            - Fn::Join:
+              - ""
+              - - "arn:"
+                - Ref: "AWS::Partition"
+                - ":logs:"
+                - Ref: "AWS::Region"
+                - ":"
+                - Ref: "AWS::AccountId"
+                - ":log-group:/aws/lambda/testService-dev-definition:*"
+          - Effect: "Allow"
+            Action:
+            - "logs:PutLogEvents"
+            Resource:
+            - Fn::Join:
+              - ""
+              - - "arn:"
+                - Ref: "AWS::Partition"
+                - ":logs:"
+                - Ref: "AWS::Region"
+                - ":"
+                - Ref: "AWS::AccountId"
+                - ":log-group:/aws/lambda/testService-dev-definition:*"
+                - ":*"
+          Version: "2012-10-17"
+        PolicyName: "dev-testService-lambda"
+      RoleName:
+        Fn::Join:
+        - ""
+        - - "testService-dev-"
+          - Ref: "AWS::Region"
+          - "-lambdaRole"
+  Function:
+    Type: "AWS::Lambda::Function"
+    DependsOn:
+    - "LogGroup"
+    - "Role"
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: "Bob"
+        S3Key: "Dont know"
+      Handler: "a.b.c"
+      Role:
+        Ref: "Role"
+      Runtime: "nodejs8.10"
+""") { template }
+    }
+
+    @Test
+    fun `should have bsucket and bucket policy by default`() {
+            val template = KloudFormationTemplate.create {
+                serverless("testService") {
+                    serverlessFunction(
+                        functionId = "myFunction",
+                        codeLocationKey = +"Dont know",
+                        handler = +"a.b.c",
+                        runtime = +"nodejs8.10"
+                    ) { modify {
+                        lambdaFunction { modify { tracingConfig { mode("Active") } } }
+                        http(Path.CorsConfig()) { modify {
+                            path({ "abc" / "def" }) { modify {
+                                httpMethod(Method.GET)
+                                httpMethod(Method.POST)
+                                path({ "ghi" / { "uvw" } }) { modify {
+                                    httpMethod(Method.POST)
+                                } }
+                            } }
+                        } }
+                    } }
+                }
+        }
+        println(template.toYaml())
     }
 }
