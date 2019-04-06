@@ -57,7 +57,7 @@ class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: 
             )
             if (pre.globalRole == null) lambdaRole.keep()
             val roleResource = Serverless.Builder.run { roleFor(pre.serviceName, pre.stage, lambdaRole) } ?: pre.globalRole
-            val lambdaResource = lambdaFunction(Parts.LambdaProps(code, props.handler, roleResource?.ref() ?: +"", props.runtime)) { props ->
+            val lambdaResource = lambdaFunction(Parts.LambdaProps(code, props.handler, roleResource?.Arn() ?: +"", props.runtime)) { props ->
                 function(props.code, props.handler, props.role, props.runtime,
                         dependsOn = listOfNotNull(logGroupResource.logicalName, roleResource?.logicalName)) {
                     val privateOverride = this@Builder.props.privateConfig

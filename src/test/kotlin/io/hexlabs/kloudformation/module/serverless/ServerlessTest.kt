@@ -100,7 +100,9 @@ Resources:
         S3Key: "Dont know"
       Handler: "a.b.c"
       Role:
-        Ref: "Role"
+        Fn::GetAtt:
+        - "Role"
+        - "Arn"
       Runtime: "nodejs8.10"
 """) { template }
     }
