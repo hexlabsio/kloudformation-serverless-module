@@ -13,13 +13,12 @@ import io.kloudformation.model.iam.IamPolicyVersion
 import io.kloudformation.model.iam.action
 import io.kloudformation.model.iam.policyDocument
 import io.kloudformation.model.iam.resource
-import io.kloudformation.module.Modification
 import io.kloudformation.module.NoProps
 import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
-import io.kloudformation.module.SubModules
 import io.kloudformation.module.Module
 import io.kloudformation.module.modification
+import io.kloudformation.module.submodules
 import io.kloudformation.resource.aws.apigateway.Deployment
 import io.kloudformation.resource.aws.apigateway.RestApi
 import io.kloudformation.resource.aws.apigateway.deployment
@@ -36,18 +35,18 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
         val httpRestApi = modification<RestApi.Builder, RestApi, NoProps>()
         val httpDeployment = modification<Deployment.Builder, Deployment, NoProps>()
         val lambdaPermission = modification<Permission.Builder, Permission, NoProps>()
-        val path = SubModules({ pre: Path.Predefined, props: Path.Props -> Path.Builder(pre, props) })
+        val path = submodules { pre: Path.Predefined, props: Path.Props -> Path.Builder(pre, props) }
         fun path(
             pathBuilder: Path.PathBuilder.() -> Path.PathBuilder = { this },
-            modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
+            modifications: Path.Parts.(Path.Predefined) -> Unit = {}
         ) = path(Path.Props(pathBuilder), modifications)
         fun path(
             path: String,
-            modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
+            modifications: Path.Parts.(Path.Predefined) -> Unit = {}
         ) = path(Path.Props(path), modifications)
     }
 
-    class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<Http, Parts, Predefined, Props>(pre, Parts()) {
+    class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<Http, Parts, Predefined>(pre, Parts()) {
 
         override fun KloudFormation.buildModule(): Parts.() -> Http = {
             val restApiResource = httpRestApi(NoProps) {

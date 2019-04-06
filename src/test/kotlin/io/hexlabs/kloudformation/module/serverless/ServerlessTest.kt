@@ -114,18 +114,18 @@ Resources:
                         codeLocationKey = +"Dont know",
                         handler = +"a.b.c",
                         runtime = +"nodejs8.10"
-                    ) { modify {
-                        lambdaFunction { modify { tracingConfig { mode("Active") } } }
-                        http(Path.CorsConfig()) { modify {
-                            path({ "abc" / "def" }) { modify {
-                                httpMethod(Method.GET)
-                                httpMethod(Method.POST)
-                                path({ "ghi" / { "uvw" } }) { modify {
-                                    httpMethod(Method.POST)
-                                } }
-                            } }
-                        } }
-                    } }
+                    ) {
+                        lambdaFunction { tracingConfig { mode("Active") } }
+                        http(cors = true) {
+                            path({ "abc" / "def" }) {
+                                Method.GET()
+                                Method.POST()
+                                path({ "ghi" / { "uvw" } }) {
+                                    Method.POST()
+                                }
+                            }
+                        }
+                    }
                 }
         }
         println(template.toYaml())

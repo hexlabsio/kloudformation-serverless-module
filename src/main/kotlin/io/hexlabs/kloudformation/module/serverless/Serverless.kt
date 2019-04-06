@@ -45,7 +45,7 @@ class Serverless(val deploymentBucket: Bucket?, val globalRole: Role?, val funct
             handler: Value<String>,
             runtime: Value<String>,
             privateConfig: Serverless.PrivateConfig? = null,
-            modifications: Modification<ServerlessFunction.Parts, ServerlessFunction, ServerlessFunction.Predefined>.() -> Unit = {}
+            modifications: ServerlessFunction.Parts.(ServerlessFunction.Predefined) -> Unit = {}
         ) = serverlessFunction(ServerlessFunction.Props(functionId, codeLocationKey, handler, runtime, privateConfig), modifications)
         data class RoleProps(var assumedRolePolicyDocument: PolicyDocument) : Properties
     }

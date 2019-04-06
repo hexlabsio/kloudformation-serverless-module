@@ -9,8 +9,8 @@ import io.kloudformation.resource.aws.apigateway.resource
 import io.kloudformation.module.Module
 import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
-import io.kloudformation.module.SubModules
 import io.kloudformation.module.modification
+import io.kloudformation.module.submodules
 import io.kloudformation.property.aws.apigateway.method.integrationResponse
 import io.kloudformation.property.aws.apigateway.method.methodResponse
 import io.kloudformation.resource.aws.apigateway.method
@@ -36,29 +36,32 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
     class Parts(
         val httpResource: Map<String, Modification<Resource.Builder, Resource, ResourceProps>> = emptyMap()
     ) {
-        val httpMethod = SubModules({ pre: HttpMethod.Predefined, props: HttpMethod.Props -> HttpMethod.Builder(pre, props) })
+        val httpMethod = submodules { pre: HttpMethod.Predefined, props: HttpMethod.Props -> HttpMethod.Builder(pre, props) }
         fun httpMethod(
             httpMethod: Value<String>,
-            modifications: Modification<HttpMethod.Parts, HttpMethod, HttpMethod.Predefined>.() -> Unit = {}
+            modifications: HttpMethod.Parts.(HttpMethod.Predefined) -> Unit = {}
         ) = httpMethod(HttpMethod.Props(httpMethod), modifications)
         fun httpMethod(
             httpMethod: Method,
-            modifications: Modification<HttpMethod.Parts, HttpMethod, HttpMethod.Predefined>.() -> Unit = {}
+            modifications: HttpMethod.Parts.(HttpMethod.Predefined) -> Unit = {}
         ) = httpMethod(Value.Of(httpMethod.name), modifications)
-        val path = SubModules({ pre: Path.Predefined, props: Path.Props -> Path.Builder(pre, props) })
+        operator fun Method.invoke(
+            modifications: HttpMethod.Parts.(HttpMethod.Predefined) -> Unit = {}
+        ) = httpMethod(Value.Of(name), modifications)
+        val path = submodules { pre: Path.Predefined, props: Path.Props -> Path.Builder(pre, props) }
         fun path(
             pathBuilder: Path.PathBuilder.() -> Path.PathBuilder = { this },
-            modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
+            modifications: Path.Parts.(Path.Predefined) -> Unit = {}
         ) = path(Path.Props(pathBuilder), modifications)
         fun path(
             path: String,
-            modifications: Modification<Path.Parts, Path, Path.Predefined>.() -> Unit = {}
+            modifications: Path.Parts.(Path.Predefined) -> Unit = {}
         ) = path(Path.Props(path), modifications)
 
         class ResourceProps(var path: Value<String>, var parentId: Value<String>, var restApi: Value<String>) : Properties
     }
 
-    class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<Path, Parts, Predefined, Props>(pre, Parts(
+    class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<Path, Parts, Predefined>(pre, Parts(
             httpResource = props.pathParts.map { it to modification<Resource.Builder, Resource, Parts.ResourceProps>() }.toMap()
     )) {
         override fun KloudFormation.buildModule(): Parts.() -> Path = {

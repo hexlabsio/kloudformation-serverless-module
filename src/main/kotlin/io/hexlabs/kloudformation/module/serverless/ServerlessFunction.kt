@@ -2,7 +2,6 @@ package io.hexlabs.kloudformation.module.serverless
 
 import io.kloudformation.KloudFormation
 import io.kloudformation.Value
-import io.kloudformation.module.Modification
 import io.kloudformation.property.aws.lambda.function.Code
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.lambda.Function
@@ -13,9 +12,9 @@ import io.kloudformation.module.Module
 import io.kloudformation.module.NoProps
 import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
-import io.kloudformation.module.SubModules
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
+import io.kloudformation.module.submodules
 
 class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
 
@@ -27,18 +26,23 @@ class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: 
         val lambdaLogGroup = modification<LogGroup.Builder, LogGroup, NoProps>()
         val lambdaRole = optionalModification<Role.Builder, Role, Serverless.Parts.RoleProps>(absent = true)
         val lambdaFunction = modification<Function.Builder, Function, LambdaProps>()
-        val http = SubModules({ pre: Http.Predefined, props: Http.Props -> Http.Builder(pre, props) })
+        val http = submodules { pre: Http.Predefined, props: Http.Props -> Http.Builder(pre, props) }
         fun http(
             cors: Path.CorsConfig? = null,
             vpcEndpoint: Value<String>? = null,
-            modifications: Modification<Http.Parts, Http, Http.Predefined>.() -> Unit = {}
+            modifications: Http.Parts.(Http.Predefined) -> Unit = {}
         ) = http(Http.Props(cors, vpcEndpoint), modifications)
+        fun http(
+            cors: Boolean = false,
+            vpcEndpoint: Value<String>? = null,
+            modifications: Http.Parts.(Http.Predefined) -> Unit = {}
+        ) = http(Http.Props(if (cors) Path.CorsConfig() else null, vpcEndpoint), modifications)
     }
 
     class Builder(
         pre: Predefined,
         val props: Props
-    ) : SubModuleBuilder<ServerlessFunction, Parts, Predefined, Props>(pre, Parts()) {
+    ) : SubModuleBuilder<ServerlessFunction, Parts, Predefined>(pre, Parts()) {
 
         override fun KloudFormation.buildModule(): Parts.() -> ServerlessFunction = {
             val logGroupResource = lambdaLogGroup(NoProps) {
