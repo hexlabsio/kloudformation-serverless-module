@@ -7,6 +7,7 @@ import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsAccou
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsPartition
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsRegion
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsUrlSuffix
+import io.kloudformation.model.Output
 import io.kloudformation.model.iam.ConditionKey
 import io.kloudformation.model.iam.ConditionOperators
 import io.kloudformation.model.iam.IamPolicyVersion
@@ -71,6 +72,10 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                     modifyBuilder(it)
                 }
             }
+            outputs("ServiceEndpoint" to Output(
+                    description = "URL of the service",
+                    value = +"https://" + restApiResource.ref() + ".execute-api." + awsRegion + "." + awsUrlSuffix + "/${pre.stage}"
+            ))
             val lambdaIntegration = +"arn:" + awsPartition + ":apigateway:" + awsRegion + ":lambda:path/2015-03-31/functions/" + pre.lambdaArn + "/invocations"
             val paths = path.modules().mapNotNull {
                 it.module(Path.Predefined(

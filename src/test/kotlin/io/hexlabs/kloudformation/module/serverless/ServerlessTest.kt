@@ -108,7 +108,7 @@ Resources:
     }
 
     @Test
-    fun `should have bsucket and bucket policy by default`() {
+    fun `should have bucket and bucket policy by default`() {
             val template = KloudFormationTemplate.create {
                 serverless("testService") {
                     serverlessFunction(
