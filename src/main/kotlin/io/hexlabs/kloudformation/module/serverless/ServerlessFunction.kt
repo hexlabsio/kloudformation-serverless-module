@@ -16,10 +16,13 @@ import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
 import io.kloudformation.module.submodules
 
-class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
+data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
 
     class Predefined(var serviceName: String, var stage: String, var deploymentBucketArn: Value<String>, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?) : Properties
-    class Props(val functionId: String, val codeLocationKey: Value<String>, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties
+    sealed class Props(val functionId: String, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties {
+        class BucketLocationProps(val codeLocationKey: Value<String>, functionId: String, handler: Value<String>, runtime: Value<String>, privateConfig: Serverless.PrivateConfig? = null) : Props(functionId, handler, runtime, privateConfig)
+        class CodeProps(val code: Value<String>, functionId: String, handler: Value<String>, runtime: Value<String>, privateConfig: Serverless.PrivateConfig? = null) : Props(functionId, handler, runtime, privateConfig)
+    }
 
     class Parts {
         data class LambdaProps(var code: Code, var handler: Value<String>, var role: Value<String>, var runtime: Value<String>) : Properties
@@ -51,10 +54,10 @@ class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: 
                     modifyBuilder(it)
                 }
             }
-            val code = Code(
-                    s3Bucket = pre.deploymentBucketArn,
-                    s3Key = props.codeLocationKey
-            )
+            val code = when (props) {
+                is Props.BucketLocationProps -> Code(s3Bucket = pre.deploymentBucketArn, s3Key = props.codeLocationKey)
+                is Props.CodeProps -> Code(zipFile = props.code)
+            }
             if (pre.globalRole == null) lambdaRole.keep()
             val roleResource = Serverless.Builder.run { roleFor(pre.serviceName, pre.stage, lambdaRole) } ?: pre.globalRole
             val lambdaResource = lambdaFunction(Parts.LambdaProps(code, props.handler, roleResource?.Arn() ?: +"", props.runtime)) { props ->

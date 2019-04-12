@@ -1,6 +1,8 @@
 package io.hexlabs.kloudformation.module.serverless
 
+import io.kloudformation.Value
 import io.kloudformation.model.KloudFormationTemplate
+import io.kloudformation.property.aws.lambda.function.Code
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.lambda.Function
 import io.kloudformation.resource.aws.logs.LogGroup
@@ -11,7 +13,7 @@ import kotlin.test.expect
 
 class ServerlessTest {
 
-    inline fun <reified T> KloudFormationTemplate.filter() = resources.resources.toList().filter { it.second is T }
+    inline fun <reified T> KloudFormationTemplate.filter() = resources.resources.toList().filter { it.second is T }.map { it.first to (it.second as T) }
 
     @Test
     fun `should have logGroup Role and Function by default`() {
@@ -62,5 +64,16 @@ class ServerlessTest {
         }
         val roles = template.resources.resources.toList().filter { (key, value) -> value.kloudResourceType == "AWS::IAM::Role" }
         expect(1) { roles.size }
+    }
+
+    @Test
+    fun `should allow code function`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code")
+            }
+        }
+        val function = template.filter<Function>().first()
+        expect(Code(zipFile = Value.Of("Some Code"))) { function.second.code }
     }
 }

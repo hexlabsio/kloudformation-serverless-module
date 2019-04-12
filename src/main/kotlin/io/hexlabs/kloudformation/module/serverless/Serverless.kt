@@ -41,7 +41,15 @@ class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>)
             runtime: Value<String>,
             privateConfig: Serverless.PrivateConfig? = null,
             modifications: ServerlessFunction.Parts.(ServerlessFunction.Predefined) -> Unit = {}
-        ) = serverlessFunction(ServerlessFunction.Props(functionId, codeLocationKey, handler, runtime, privateConfig), modifications)
+        ) = serverlessFunction(ServerlessFunction.Props.BucketLocationProps(codeLocationKey, functionId, handler, runtime, privateConfig), modifications)
+        fun serverlessFunctionWithCode(
+            functionId: String,
+            code: Value<String>,
+            handler: Value<String>,
+            runtime: Value<String>,
+            privateConfig: Serverless.PrivateConfig? = null,
+            modifications: ServerlessFunction.Parts.(ServerlessFunction.Predefined) -> Unit = {}
+        ) = serverlessFunction(ServerlessFunction.Props.CodeProps(code, functionId, handler, runtime, privateConfig), modifications)
         data class RoleProps(var assumedRolePolicyDocument: PolicyDocument) : Properties
     }
 
