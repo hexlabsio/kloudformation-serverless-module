@@ -1,8 +1,11 @@
 package io.hexlabs.kloudformation.module.serverless
 
 import io.kloudformation.Value
+import io.kloudformation.function.Att
 import io.kloudformation.model.KloudFormationTemplate
 import io.kloudformation.property.aws.lambda.function.Code
+import io.kloudformation.resource.aws.apigateway.Resource
+import io.kloudformation.resource.aws.apigateway.RestApi
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.lambda.Function
 import io.kloudformation.resource.aws.logs.LogGroup
@@ -75,5 +78,23 @@ class ServerlessTest {
         }
         val function = template.filter<Function>().first()
         expect(Code(zipFile = Value.Of("Some Code"))) { function.second.code }
+    }
+
+    @Test
+    fun `should link methods to rest api when empty path`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    http(cors = false) {
+                        path("/") { Method.GET() }
+                    }
+                }
+            }
+        }
+        val restApi = template.filter<RestApi>().first()
+        val resources = template.filter<Resource>()
+        val method = template.filter<io.kloudformation.resource.aws.apigateway.Method>().first()
+        expect(0) { resources.size }
+        expect(Att(restApi.first, Value.Of("RootResourceId"))) { method.second.resourceId }
     }
 }

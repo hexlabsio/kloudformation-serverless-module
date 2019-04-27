@@ -80,7 +80,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
             val paths = path.modules().mapNotNull {
                 it.module(Path.Predefined(
                         parentId = restApiResource.RootResourceId(),
-                        restApi = restApiResource.ref(),
+                        restApi = restApiResource,
                         integrationUri = lambdaIntegration,
                         cors = props.cors?.let { Path.CorsConfig() }))()
             }
