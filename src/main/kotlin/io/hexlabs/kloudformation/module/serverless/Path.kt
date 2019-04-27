@@ -88,7 +88,7 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
                 val corsHeaders = "method.response.header.Access-Control-Allow-Headers"
                 val corsMethods = "method.response.header.Access-Control-Allow-Methods"
                 val corsCredentials = "method.response.header.Access-Control-Allow-Credentials"
-                method(+"OPTIONS", endResource, pre.restApi.ref(), logicalName = allocateLogicalName("MethodOptions")) {
+                method(+"OPTIONS", endResource, pre.restApi.ref(), logicalName = allocateLogicalName("Method${normalizedPath}Options")) {
                     authorizationType("NONE")
                     methodResponses(listOf(
                             methodResponse(statusCode = +"200") {
