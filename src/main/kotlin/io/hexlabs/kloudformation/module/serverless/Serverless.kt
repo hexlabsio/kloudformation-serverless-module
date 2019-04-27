@@ -97,7 +97,6 @@ class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>)
                                 )
                         ))
                         path("/")
-                        roleName(+"$serviceName-$stage-" + awsRegion + "-${UUID.randomUUID()}")
                         managedPolicyArns(listOf(
                                 +"arn:" + awsPartition + ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
                         ))

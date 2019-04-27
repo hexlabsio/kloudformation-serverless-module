@@ -30,7 +30,7 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
     class Predefined(var parentId: Value<String>, var restApi: RestApi, var integrationUri: Value<String>, var cors: CorsConfig?) : Properties
 
     class Props(pathBuilder: PathBuilder.() -> PathBuilder = { this }) : Properties {
-        constructor(path: String) : this({ PathBuilder(if (path.isEmpty() || path == "/") emptyList() else path.split("/")) })
+        constructor(path: String) : this({ PathBuilder(if (path.isEmpty() || path == "/") emptyList() else (if (path.startsWith("/")) path.substring(1) else path).split("/")) })
         val pathParts: List<String> = pathBuilder(PathBuilder()).pathParts
     }
 
@@ -39,16 +39,16 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
     ) {
         val httpMethod = submodules { pre: HttpMethod.Predefined, props: HttpMethod.Props -> HttpMethod.Builder(pre, props) }
         fun httpMethod(
-            httpMethod: Value<String>,
+            httpMethod: String,
             modifications: HttpMethod.Parts.(HttpMethod.Predefined) -> Unit = {}
         ) = httpMethod(HttpMethod.Props(httpMethod), modifications)
         fun httpMethod(
             httpMethod: Method,
             modifications: HttpMethod.Parts.(HttpMethod.Predefined) -> Unit = {}
-        ) = httpMethod(Value.Of(httpMethod.name), modifications)
+        ) = httpMethod(httpMethod.name, modifications)
         operator fun Method.invoke(
             modifications: HttpMethod.Parts.(HttpMethod.Predefined) -> Unit = {}
-        ) = httpMethod(Value.Of(name), modifications)
+        ) = httpMethod(name, modifications)
         val path = submodules { pre: Path.Predefined, props: Path.Props -> Path.Builder(pre, props) }
         fun path(
             pathBuilder: Path.PathBuilder.() -> Path.PathBuilder = { this },
@@ -67,17 +67,20 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
     )) {
         override fun KloudFormation.buildModule(): Parts.() -> Path = {
             val pathParts = props.pathParts
+            var normalizedPath = ""
+            fun append(part: String) { normalizedPath += part.let { (if (it.contains("{")) it.substringAfter("{").substringBeforeLast("}") + "Var" else it).replace(Regex("[^0-9A-Za-z]"), "") } }
             val apiResources = pathParts.foldIndexed(emptyList<Pair<String, Resource>>()) { index, acc, pathPart ->
                 val parentId = if (index == 0) pre.parentId else acc.last().second.ref()
                 acc + (pathPart to httpResource[pathPart]!!(Parts.ResourceProps(Value.Of(pathPart), parentId, pre.restApi.ref())) { props ->
-                    resource(parentId = props.parentId, restApiId = props.restApi, pathPart = props.path) {
+                    append(pathPart)
+                    resource(parentId = props.parentId, restApiId = props.restApi, pathPart = props.path, logicalName = allocateLogicalName("ApiGatewayResource$normalizedPath")) {
                         modifyBuilder(props)
                     }
                 })
             }.toMap()
             val endResource: Value<String> = apiResources.toList().lastOrNull()?.second?.ref() ?: pre.restApi.RootResourceId()
             val apiMethods = httpMethod.modules().mapNotNull {
-                it.module(HttpMethod.Predefined(pre.cors != null, pre.restApi.ref(), endResource, pre.integrationUri))()
+                it.module(HttpMethod.Predefined(pre.cors != null, pre.restApi.ref(), endResource, pre.integrationUri, normalizedPath))()
             }
             val optionsMethod = (if (pre.cors != null && apiMethods.any { it.corsEnabled }) {
                 val corsMethodsForPath = apiMethods.filter { it.corsEnabled }.map { it.method.httpMethod }

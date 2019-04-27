@@ -23,9 +23,9 @@ enum class Method {
 
 class HttpMethod(val method: io.kloudformation.resource.aws.apigateway.Method, val corsEnabled: Boolean) : Module {
 
-    class Predefined(var cors: Boolean, var restApiId: Value<String>, var resourceId: Value<String>, var integrationUri: Value<String>) : Properties
+    class Predefined(var cors: Boolean, var restApiId: Value<String>, var resourceId: Value<String>, var integrationUri: Value<String>, val normalizedPathName: String) : Properties
 
-    class Props(val httpMethod: Value<String>) : Properties
+    class Props(val httpMethod: String) : Properties
 
     class Parts(
         val httpMethod: Modification<io.kloudformation.resource.aws.apigateway.Method.Builder, io.kloudformation.resource.aws.apigateway.Method, MethodProps> = modification()
@@ -35,8 +35,8 @@ class HttpMethod(val method: io.kloudformation.resource.aws.apigateway.Method, v
 
     class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<HttpMethod, Parts, Predefined>(pre, Parts()) {
         override fun KloudFormation.buildModule(): Parts.() -> HttpMethod = {
-            val method = httpMethod(Parts.MethodProps(props.httpMethod)) { props ->
-                method(props.httpMethod, pre.resourceId, pre.restApiId) {
+            val method = httpMethod(Parts.MethodProps(+props.httpMethod)) { props ->
+                method(props.httpMethod, pre.resourceId, pre.restApiId, logicalName = allocateLogicalName("Method" + pre.normalizedPathName + this@Builder.props.httpMethod.toUpperCase())) {
                     requestParameters(emptyMap())
                     apiKeyRequired(false)
                     authorizationType("None")
