@@ -19,6 +19,7 @@ import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.Module
 import io.kloudformation.module.modification
+import io.kloudformation.module.submodule
 import io.kloudformation.module.submodules
 import io.kloudformation.resource.aws.apigateway.Deployment
 import io.kloudformation.resource.aws.apigateway.RestApi
@@ -28,14 +29,21 @@ import io.kloudformation.resource.aws.lambda.Permission
 import io.kloudformation.resource.aws.lambda.permission
 import java.util.UUID
 
-class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission) : Module {
+class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission, val basePathMapping: HttpBasePathMapping?) : Module {
     class Predefined(var serviceName: String, var stage: String, var lambdaArn: Value<String>) : Properties
     class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null) : Properties
+    class BasePathProps(val domain: Value<String>, val basePath: Value<String>? = null) : Properties
 
     class Parts {
         val httpRestApi = modification<RestApi.Builder, RestApi, NoProps>()
         val httpDeployment = modification<Deployment.Builder, Deployment, NoProps>()
         val lambdaPermission = modification<Permission.Builder, Permission, NoProps>()
+        val httpBasePathMapping = submodule { pre: HttpBasePathMapping.Predefined, props: HttpBasePathMapping.Props -> HttpBasePathMapping.Builder(pre, props) }
+        fun httpBasePathMapping(
+            domain: Value<String>,
+            basePath: Value<String>? = null,
+            modifications: HttpBasePathMapping.Parts.(HttpBasePathMapping.Predefined) -> Unit = {}
+        ) = httpBasePathMapping(HttpBasePathMapping.Props(domain, basePath), modifications)
         val path = submodules { pre: Path.Predefined, props: Path.Props -> Path.Builder(pre, props) }
         fun path(
             pathBuilder: Path.PathBuilder.() -> Path.PathBuilder = { this },
@@ -96,6 +104,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                     modifyBuilder(it)
                 }
             }
+            val httpBasePathMapping = httpBasePathMapping.module(HttpBasePathMapping.Predefined(restApiResource.ref(), pre.stage, deployment.logicalName))()
             val lambdaPermissionResource = lambdaPermission(NoProps) {
                 permission(
                         action = +"lambda:InvokeFunction",
@@ -106,7 +115,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                     modifyBuilder(it)
                 }
             }
-            Http(restApiResource, paths, deployment, lambdaPermissionResource)
+            Http(restApiResource, paths, deployment, lambdaPermissionResource, httpBasePathMapping)
         }
     }
 }

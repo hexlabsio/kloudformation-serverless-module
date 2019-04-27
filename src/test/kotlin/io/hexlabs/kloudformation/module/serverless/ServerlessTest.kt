@@ -2,10 +2,14 @@ package io.hexlabs.kloudformation.module.serverless
 
 import io.kloudformation.Value
 import io.kloudformation.function.Att
+import io.kloudformation.function.Reference
 import io.kloudformation.model.KloudFormationTemplate
+import io.kloudformation.module.value
 import io.kloudformation.property.aws.lambda.function.Code
+import io.kloudformation.resource.aws.apigateway.BasePathMapping
 import io.kloudformation.resource.aws.apigateway.Resource
 import io.kloudformation.resource.aws.apigateway.RestApi
+import io.kloudformation.resource.aws.apigateway.basePathMapping
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.lambda.Function
 import io.kloudformation.resource.aws.logs.LogGroup
@@ -96,5 +100,23 @@ class ServerlessTest {
         val method = template.filter<io.kloudformation.resource.aws.apigateway.Method>().first()
         expect(0) { resources.size }
         expect(Att(restApi.first, Value.Of("RootResourceId"))) { method.second.resourceId }
+    }
+
+    @Test
+    fun `should create base path mapping`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    http(cors = false) {
+                        httpBasePathMapping(+"a.b.com", +"dev")
+                    }
+                }
+            }
+        }
+        val restApi = template.filter<RestApi>().first().second
+        val basePathMapping = template.filter<BasePathMapping>().first().second
+        expect(Value.Of("a.b.com")) { basePathMapping.domainName }
+        expect(restApi.ref().ref) { (basePathMapping.restApiId as Reference<String>).ref }
+        expect(Value.Of("dev")) { basePathMapping.stage }
     }
 }
