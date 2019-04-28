@@ -15,6 +15,7 @@ import io.kloudformation.property.aws.apigateway.method.integrationResponse
 import io.kloudformation.property.aws.apigateway.method.methodResponse
 import io.kloudformation.resource.aws.apigateway.RestApi
 import io.kloudformation.resource.aws.apigateway.method
+import io.kloudformation.unaryPlus
 
 class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val methods: List<HttpMethod>) : Module {
     class CorsConfig

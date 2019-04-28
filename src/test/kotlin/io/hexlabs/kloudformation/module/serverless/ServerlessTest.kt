@@ -15,6 +15,7 @@ import io.kloudformation.resource.aws.lambda.Function
 import io.kloudformation.resource.aws.logs.LogGroup
 import io.kloudformation.resource.aws.s3.bucket
 import io.kloudformation.toYaml
+import io.kloudformation.unaryPlus
 import org.junit.jupiter.api.Test
 import kotlin.test.expect
 

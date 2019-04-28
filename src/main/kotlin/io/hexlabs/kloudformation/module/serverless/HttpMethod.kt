@@ -8,6 +8,7 @@ import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.modification
 import io.kloudformation.resource.aws.apigateway.method
+import io.kloudformation.unaryPlus
 
 enum class Method {
     CONNECT,

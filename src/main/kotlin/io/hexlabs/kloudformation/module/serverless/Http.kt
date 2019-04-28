@@ -27,6 +27,7 @@ import io.kloudformation.resource.aws.apigateway.deployment
 import io.kloudformation.resource.aws.apigateway.restApi
 import io.kloudformation.resource.aws.lambda.Permission
 import io.kloudformation.resource.aws.lambda.permission
+import io.kloudformation.unaryPlus
 import java.util.UUID
 
 class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission, val basePathMapping: HttpBasePathMapping?) : Module {

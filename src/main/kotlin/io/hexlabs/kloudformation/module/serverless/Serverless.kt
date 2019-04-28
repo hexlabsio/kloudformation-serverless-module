@@ -20,9 +20,10 @@ import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModules
 import io.kloudformation.module.builder
 import io.kloudformation.module.optionalModification
-import io.kloudformation.property.aws.iam.role.policy
+import io.kloudformation.property.aws.iam.role.Policy
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.iam.role
+import io.kloudformation.unaryPlus
 import java.util.UUID
 
 class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>) : Module {
@@ -79,7 +80,7 @@ class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>)
                 return roleMod(Serverless.Parts.RoleProps(defaultAssumeRole)) { props ->
                     role(props.assumedRolePolicyDocument) {
                         policies(listOf(
-                                policy(
+                                Policy(
                                         policyName = +"$stage-$serviceName-${UUID.randomUUID()}",
                                         policyDocument = PolicyDocument(
                                                 version = IamPolicyVersion.V2.version,

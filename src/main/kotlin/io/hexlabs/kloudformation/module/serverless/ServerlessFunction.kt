@@ -15,6 +15,7 @@ import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
 import io.kloudformation.module.submodules
+import io.kloudformation.unaryPlus
 
 data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
 
