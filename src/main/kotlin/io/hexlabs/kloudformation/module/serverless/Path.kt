@@ -27,8 +27,8 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
         operator fun (() -> String).div(path: String) = PathBuilder(listOf("{${this()}}", path))
         operator fun (() -> String).div(parameter: () -> String) = PathBuilder(listOf("{${this()}}", "{${parameter()}}"))
     }
-
-    class Predefined(var parentId: Value<String>, var restApi: RestApi, var integrationUri: Value<String>, var cors: CorsConfig?) : Properties
+    data class AuthProps(val authType: Value<String>, val authId: Value<String>)
+    class Predefined(var parentId: Value<String>, var restApi: RestApi, var integrationUri: Value<String>, var cors: CorsConfig?, var authProps: AuthProps?) : Properties
 
     class Props(pathBuilder: PathBuilder.() -> PathBuilder = { this }) : Properties {
         constructor(path: String) : this({ PathBuilder(if (path.isEmpty() || path == "/") emptyList() else (if (path.startsWith("/")) path.substring(1) else path).split("/")) })
@@ -81,7 +81,7 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
             }.toMap()
             val endResource: Value<String> = apiResources.toList().lastOrNull()?.second?.ref() ?: pre.restApi.RootResourceId()
             val apiMethods = httpMethod.modules().mapNotNull {
-                it.module(HttpMethod.Predefined(pre.cors != null, pre.restApi.ref(), endResource, pre.integrationUri, normalizedPath))()
+                it.module(HttpMethod.Predefined(pre.cors != null, pre.restApi.ref(), endResource, pre.integrationUri, normalizedPath, pre.authProps))()
             }
             val optionsMethod = (if (pre.cors != null && apiMethods.any { it.corsEnabled }) {
                 val corsMethodsForPath = apiMethods.filter { it.corsEnabled }.map { it.method.httpMethod }
@@ -119,7 +119,7 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
                 }
             } else null)?.let { HttpMethod(it, true) }
             val paths = path.modules().mapNotNull {
-                it.module(Path.Predefined(endResource, pre.restApi, pre.integrationUri, pre.cors?.let { CorsConfig() }))()
+                it.module(Path.Predefined(endResource, pre.restApi, pre.integrationUri, pre.cors?.let { CorsConfig() }, pre.authProps))()
             }
             Path(apiResources, paths, apiMethods + (optionsMethod?.let { listOf(it) } ?: emptyList()))
         }

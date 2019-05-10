@@ -14,10 +14,10 @@ import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
-import io.kloudformation.module.submodules
+import io.kloudformation.module.submodule
 import io.kloudformation.unaryPlus
 
-data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val httpEvents: List<Http>) : Module {
+data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val http: Http?) : Module {
 
     class Predefined(var serviceName: String, var stage: String, var deploymentBucketArn: Value<String>, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?) : Properties
     sealed class Props(val functionId: String, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties {
@@ -30,17 +30,19 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
         val lambdaLogGroup = modification<LogGroup.Builder, LogGroup, NoProps>()
         val lambdaRole = optionalModification<Role.Builder, Role, Serverless.Parts.RoleProps>(absent = true)
         val lambdaFunction = modification<Function.Builder, Function, LambdaProps>()
-        val http = submodules { pre: Http.Predefined, props: Http.Props -> Http.Builder(pre, props) }
+        val http = submodule { pre: Http.Predefined, props: Http.Props -> Http.Builder(pre, props) }
         fun http(
-            cors: Path.CorsConfig? = null,
+            cors: Path.CorsConfig,
             vpcEndpoint: Value<String>? = null,
+            authorizer: Value<String>? = null,
             modifications: Http.Parts.(Http.Predefined) -> Unit = {}
-        ) = http(Http.Props(cors, vpcEndpoint), modifications)
+        ) = http(Http.Props(cors, vpcEndpoint, authorizer), modifications)
         fun http(
             cors: Boolean = false,
             vpcEndpoint: Value<String>? = null,
+            authorizer: Value<String>? = null,
             modifications: Http.Parts.(Http.Predefined) -> Unit = {}
-        ) = http(Http.Props(if (cors) Path.CorsConfig() else null, vpcEndpoint), modifications)
+        ) = http(Http.Props(if (cors) Path.CorsConfig() else null, vpcEndpoint, authorizer), modifications)
     }
 
     class Builder(
@@ -75,10 +77,8 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
                     modifyBuilder(props)
                 }
             }
-            val httpEvents = http.modules().mapNotNull {
-                it.module(Http.Predefined(pre.serviceName, pre.stage, lambdaResource.Arn()))()
-            }
-            ServerlessFunction(logGroupResource, roleResource, lambdaResource, httpEvents)
+            val http = http.module(Http.Predefined(pre.serviceName, pre.stage, lambdaResource.Arn()))()
+            ServerlessFunction(logGroupResource, roleResource, lambdaResource, http)
         }
     }
 }

@@ -19,10 +19,13 @@ import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.Module
 import io.kloudformation.module.modification
+import io.kloudformation.module.optionalModification
 import io.kloudformation.module.submodule
 import io.kloudformation.module.submodules
+import io.kloudformation.resource.aws.apigateway.Authorizer
 import io.kloudformation.resource.aws.apigateway.Deployment
 import io.kloudformation.resource.aws.apigateway.RestApi
+import io.kloudformation.resource.aws.apigateway.authorizer
 import io.kloudformation.resource.aws.apigateway.deployment
 import io.kloudformation.resource.aws.apigateway.restApi
 import io.kloudformation.resource.aws.lambda.Permission
@@ -32,11 +35,14 @@ import java.util.UUID
 
 class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission, val basePathMapping: HttpBasePathMapping?) : Module {
     class Predefined(var serviceName: String, var stage: String, var lambdaArn: Value<String>) : Properties
-    class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null) : Properties
+    class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null, val authorizer: Value<String>? = null, val authorizerType: Value<String>? = null) : Properties
     class BasePathProps(val domain: Value<String>, val basePath: Value<String>? = null) : Properties
+
+    class AuthorizerProps(var resultTtl: Value<Int>, var providerArns: List<Value<String>>, val identitySource: Value<String>) : Properties
 
     class Parts {
         val httpRestApi = modification<RestApi.Builder, RestApi, NoProps>()
+        val httpAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
         val httpDeployment = modification<Deployment.Builder, Deployment, NoProps>()
         val lambdaPermission = modification<Permission.Builder, Permission, NoProps>()
         val httpBasePathMapping = submodule { pre: HttpBasePathMapping.Predefined, props: HttpBasePathMapping.Props -> HttpBasePathMapping.Builder(pre, props) }
@@ -81,6 +87,16 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                     modifyBuilder(it)
                 }
             }
+            val authorizerResource = props.authorizer?.let { authorizer ->
+                httpAuthorizer(AuthorizerProps(Value.Of(300), listOf(authorizer), +"method.request.header.Authorization")) { authProps ->
+                    authorizer(restApiId = restApiResource.ref(), type = +"COGNITO_USER_POOLS") {
+                        providerARNs(authProps.providerArns)
+                        authorizerResultTtlInSeconds(authProps.resultTtl)
+                        identitySource(authProps.identitySource)
+                        name("api-auth-${pre.serviceName}")
+                    }
+                }
+            }
             outputs("ServiceEndpoint" to Output(
                     description = "URL of the service",
                     value = +"https://" + restApiResource.ref() + ".execute-api." + awsRegion + "." + awsUrlSuffix + "/${pre.stage}"
@@ -91,7 +107,11 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                         parentId = restApiResource.RootResourceId(),
                         restApi = restApiResource,
                         integrationUri = lambdaIntegration,
-                        cors = props.cors?.let { Path.CorsConfig() }))()
+                        cors = props.cors?.let { Path.CorsConfig() },
+                        authProps = props.authorizer?.let { authArn ->
+                            Path.AuthProps(props.authorizerType ?: +"COGNITO_USER_POOLS", authArn)
+                        }
+                        ))()
             }
             fun subPaths(path: Path): List<Path> = listOf(path) + path.subPaths.flatMap { subPaths(it) }
             val allMethods = paths.flatMap { subPaths(it) }.flatMap { it.methods }.map { it.method.logicalName }
