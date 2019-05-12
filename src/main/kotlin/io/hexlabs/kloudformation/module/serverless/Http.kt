@@ -33,7 +33,7 @@ import io.kloudformation.resource.aws.lambda.permission
 import io.kloudformation.unaryPlus
 import java.util.UUID
 
-class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission, val basePathMapping: HttpBasePathMapping?) : Module {
+class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission, val basePathMapping: HttpBasePathMapping?, val authorizer: Authorizer?) : Module {
     class Predefined(var serviceName: String, var stage: String, var lambdaArn: Value<String>) : Properties
     class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null, val authorizerArn: Value<String>? = null, val authorizerId: Value<String>? = null, val authorizerType: Value<String>? = null) : Properties
     class BasePathProps(val domain: Value<String>, val basePath: Value<String>? = null) : Properties
@@ -136,7 +136,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                     modifyBuilder(it)
                 }
             }
-            Http(restApiResource, paths, deployment, lambdaPermissionResource, httpBasePathMapping)
+            Http(restApiResource, paths, deployment, lambdaPermissionResource, httpBasePathMapping, authorizerResource)
         }
     }
 }
