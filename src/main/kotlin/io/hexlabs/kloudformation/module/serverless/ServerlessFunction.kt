@@ -35,16 +35,14 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
             cors: Path.CorsConfig,
             vpcEndpoint: Value<String>? = null,
             authorizerArn: Value<String>? = null,
-            authorizerId: Value<String>? = null,
             modifications: Http.Parts.(Http.Predefined) -> Unit = {}
-        ) = http(Http.Props(cors, vpcEndpoint, authorizerArn, authorizerId), modifications)
+        ) = http(Http.Props(cors, vpcEndpoint, authorizerArn), modifications)
         fun http(
             cors: Boolean = false,
             vpcEndpoint: Value<String>? = null,
             authorizerArn: Value<String>? = null,
-            authorizerId: Value<String>? = null,
             modifications: Http.Parts.(Http.Predefined) -> Unit = {}
-        ) = http(Http.Props(if (cors) Path.CorsConfig() else null, vpcEndpoint, authorizerArn, authorizerId), modifications)
+        ) = http(Http.Props(if (cors) Path.CorsConfig() else null, vpcEndpoint, authorizerArn), modifications)
     }
 
     class Builder(
