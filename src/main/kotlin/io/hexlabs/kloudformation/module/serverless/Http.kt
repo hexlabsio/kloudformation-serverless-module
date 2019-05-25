@@ -8,8 +8,6 @@ import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsParti
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsRegion
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsUrlSuffix
 import io.kloudformation.model.Output
-import io.kloudformation.model.iam.ConditionKey
-import io.kloudformation.model.iam.ConditionOperators
 import io.kloudformation.model.iam.IamPolicyVersion
 import io.kloudformation.model.iam.action
 import io.kloudformation.model.iam.policyDocument
@@ -78,9 +76,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                                     resource = resource(+"arn:aws:execute-api:us-east-1:" + awsAccountId + ":*")
                             ) {
                                 allPrincipals()
-                                condition(ConditionOperators.stringEquals, mapOf(
-                                        ConditionKey<String>("aws:sourceVpce") to listOf(props.vpcEndpoint)
-                                ))
+                                condition("StringEquals", mapOf("aws:sourceVpce" to +listOf(props.vpcEndpoint)))
                             }
                         })
                     }

@@ -4,12 +4,11 @@ import io.kloudformation.Value
 import io.kloudformation.function.Att
 import io.kloudformation.function.Reference
 import io.kloudformation.model.KloudFormationTemplate
-import io.kloudformation.module.value
 import io.kloudformation.property.aws.lambda.function.Code
 import io.kloudformation.resource.aws.apigateway.BasePathMapping
 import io.kloudformation.resource.aws.apigateway.Resource
 import io.kloudformation.resource.aws.apigateway.RestApi
-import io.kloudformation.resource.aws.apigateway.basePathMapping
+import io.kloudformation.resource.aws.apigatewayv2.Api
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.lambda.Function
 import io.kloudformation.resource.aws.logs.LogGroup
@@ -75,6 +74,20 @@ class ServerlessTest {
     }
 
     @Test
+    fun `should use global role for one and local role for another function`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunction(functionId = "myFunction", codeLocationKey = +"Dont know", handler = +"a.b.c", runtime = +"nodejs8.10")
+                serverlessFunction(functionId = "myFunction2", codeLocationKey = +"Dont know", handler = +"a.b.c", runtime = +"nodejs8.10") {
+                    lambdaRole {}
+                }
+            }
+        }
+        val roles = template.filter<Role>()
+        expect(2) { roles.size }
+    }
+
+    @Test
     fun `should allow code function`() {
         val template = KloudFormationTemplate.create {
             serverless("testService", bucketName = +"bucket") {
@@ -119,5 +132,26 @@ class ServerlessTest {
         expect(Value.Of("a.b.com")) { basePathMapping.domainName }
         expect(restApi.ref().ref) { (basePathMapping.restApiId as Reference<String>).ref }
         expect(Value.Of("dev")) { basePathMapping.stage }
+    }
+
+    @Test
+    fun `should create single websocket api`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    websocket {
+                        routeMapping(+"\$connect")
+                    }
+                }
+                serverlessFunctionWithCode(functionId = "myFunction2", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    websocket {
+                        routeMapping(+"\$connect")
+                        routeMapping(+"\$disconnect")
+                    }
+                }
+            }
+        }
+        println(template.toYaml())
+        expect(1) { template.filter<Api>().size }
     }
 }

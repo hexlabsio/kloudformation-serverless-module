@@ -15,18 +15,21 @@ import io.kloudformation.model.iam.policyDocument
 import io.kloudformation.model.iam.resource
 import io.kloudformation.module.Module
 import io.kloudformation.module.ModuleBuilder
+import io.kloudformation.module.NoProps
 import io.kloudformation.module.OptionalModification
 import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModules
 import io.kloudformation.module.builder
+import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
 import io.kloudformation.property.aws.iam.role.Policy
+import io.kloudformation.resource.aws.apigatewayv2.Api
+import io.kloudformation.resource.aws.apigatewayv2.api
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.iam.role
 import io.kloudformation.unaryPlus
-import java.util.UUID
 
-class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>) : Module {
+class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functions: List<ServerlessFunction>) : Module {
 
     open class PrivateConfig(val securityGroups: Value<List<Value<String>>>? = null, val subnetIds: Value<List<Value<String>>>? = null)
     object NoPrivateConfig : PrivateConfig()
@@ -34,6 +37,7 @@ class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>)
     class Parts(
         val globalRole: OptionalModification<Role.Builder, Role, RoleProps> = optionalModification(absent = false)
     ) {
+        val globalWebsocketApi = modification<Api.Builder, Api, NoProps>()
         val serverlessFunction = SubModules({ pre: ServerlessFunction.Predefined, props: ServerlessFunction.Props -> ServerlessFunction.Builder(pre, props) })
         fun serverlessFunction(
             functionId: String,
@@ -58,19 +62,31 @@ class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>)
         val serviceName: String,
         val stage: String,
         val bucketName: Value<String>,
-        val privateConfig: PrivateConfig? = null
+        val privateConfig: PrivateConfig? = null,
+        val routeSelectionExpression: Value<String> = +"\$request.body.action"
     ) : ModuleBuilder<Serverless, Parts>(Parts()) {
 
         override fun KloudFormation.buildModule(): Parts.() -> Serverless = {
-            val roleResource = roleFor(serviceName, stage, globalRole)
-            val functions = serverlessFunction.modules().mapNotNull {
-                it.module(ServerlessFunction.Predefined(serviceName, stage, bucketName, roleResource, privateConfig))()
+            val roleResource = roleFor(serviceName, stage, "lambda", globalRole)
+            var websocketApi: Api? = null
+            val lazyWebsocketApi = {
+                if (websocketApi == null) {
+                    websocketApi = globalWebsocketApi(NoProps) {
+                        api(+stage + serviceName + "-websockets", +"WEBSOCKET", routeSelectionExpression) {
+                            modifyBuilder(it)
+                        }
+                    }
+                }
+                websocketApi!!.logicalName to websocketApi!!.ref()
             }
-            Serverless(roleResource, functions)
+            val functions = serverlessFunction.modules().mapNotNull {
+                it.module(ServerlessFunction.Predefined(serviceName, stage, bucketName, roleResource, privateConfig, lazyWebsocketApi))()
+            }
+            Serverless(roleResource, websocketApi, functions)
         }
 
         companion object {
-            fun KloudFormation.roleFor(serviceName: String, stage: String, roleMod: OptionalModification<Role.Builder, Role, Parts.RoleProps>): Role? {
+            fun KloudFormation.roleFor(serviceName: String, stage: String, name: String, roleMod: OptionalModification<Role.Builder, Role, Parts.RoleProps>): Role? {
                 val defaultAssumeRole = policyDocument(version = IamPolicyVersion.V2.version) {
                     statement(action = action("sts:AssumeRole")) {
                         principal(PrincipalType.SERVICE, listOf(+"lambda.amazonaws.com"))
@@ -81,7 +97,7 @@ class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>)
                     role(props.assumedRolePolicyDocument) {
                         policies(listOf(
                                 Policy(
-                                        policyName = +"$stage-$serviceName-${UUID.randomUUID()}",
+                                        policyName = +"$stage-$serviceName-$name",
                                         policyDocument = PolicyDocument(
                                                 version = IamPolicyVersion.V2.version,
                                                 statement = listOf(
@@ -92,10 +108,15 @@ class Serverless(val globalRole: Role?, val functions: List<ServerlessFunction>)
                                                         PolicyStatement(
                                                                 action = action("logs:PutLogEvents"),
                                                                 resource = resource(logResource + ":*")
+                                                        ),
+                                                        PolicyStatement(
+                                                                action = action("execute-api:ManageConnections"),
+                                                                resource = resource("arn:aws:execute-api:*:*:*/@connections/*")
                                                         )
                                                 )
                                         )
                                 )
+
                         ))
                         path("/")
                         managedPolicyArns(listOf(
@@ -114,5 +135,6 @@ fun KloudFormation.serverless(
     stage: String = "dev",
     bucketName: Value<String>,
     privateConfig: Serverless.PrivateConfig? = null,
+    routeSelectionExpression: Value<String> = +"\$request.body.action",
     partBuilder: Serverless.Parts.() -> Unit = {}
-) = builder(Serverless.Builder(serviceName, stage, bucketName, privateConfig), partBuilder)
+) = builder(Serverless.Builder(serviceName, stage, bucketName, privateConfig, routeSelectionExpression), partBuilder)
