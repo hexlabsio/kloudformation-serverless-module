@@ -11,7 +11,10 @@ import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.Module
 import io.kloudformation.module.modification
+import io.kloudformation.module.optionalModification
 import io.kloudformation.module.submodules
+import io.kloudformation.resource.aws.apigatewayv2.authorizer
+import io.kloudformation.resource.aws.apigatewayv2.Authorizer
 import io.kloudformation.resource.aws.apigatewayv2.Deployment
 import io.kloudformation.resource.aws.apigatewayv2.Integration
 import io.kloudformation.resource.aws.apigatewayv2.Stage
@@ -23,7 +26,7 @@ import io.kloudformation.resource.aws.lambda.permission
 import io.kloudformation.unaryPlus
 import java.util.UUID
 
-class WebSocket(val integration: Integration, val permission: Permission, val routes: List<WebSocketRoute>, val stage: Stage, val deployment: Deployment) : Module {
+class WebSocket(val integration: Integration, val permission: Permission, val routes: List<WebSocketRoute>, val stage: Stage, val deployment: Deployment, val authorizer: Authorizer?) : Module {
     class Predefined(
         var serviceName: String,
         var stage: String,
@@ -32,10 +35,11 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
         val lazyWebsocketInfo: () -> Pair<String, Value<String>>
     ) : Properties
 
-    class Props() : Properties
+    class Props(val authorizerArn: Value<String>? = null) : Properties
 
     class Parts {
         val websocketIntegration = modification<Integration.Builder, Integration, NoProps>()
+        val websocketAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
         val lambdaPermission = modification<Permission.Builder, Permission, NoProps>()
         val websocketStage = modification<Stage.Builder, Stage, NoProps>()
         val websocketDeployment = modification<Deployment.Builder, Deployment, NoProps>()
@@ -50,10 +54,22 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
         override fun KloudFormation.buildModule(): Parts.() -> WebSocket = {
             val (logicalName, apiId) = pre.lazyWebsocketInfo()
             val websocketIntegrationResource = websocketIntegration(NoProps) {
-
                 integration(apiId, +"AWS_PROXY") {
                     integrationUri(+"arn:" + awsPartition + ":apigateway:" + awsRegion + ":lambda:path/2015-03-31/functions/" + pre.lambdaArn + "/invocations")
                     modifyBuilder(it)
+                }
+            }
+            val authorizerResource = props.authorizerArn?.let { authorizerArn ->
+                websocketAuthorizer(AuthorizerProps(Value.Of(300), listOf(authorizerArn), +"route.request.querystring.Authorizer")) { authProps ->
+                    authorizer(
+                            apiId = apiId,
+                            authorizerType = +"REQUEST",
+                            identitySource = +listOf(authProps.identitySource),
+                            authorizerUri = +"arn:" + awsPartition + ":apigateway" + awsRegion + ":lambda:path/2015-03-31/functions/" + authProps.providerArns.first() + "/invocations",
+                            name = +"websocket-auth-${pre.serviceName}"
+                    ) {
+                        authorizerResultTtlInSeconds(authProps.resultTtl)
+                    }
                 }
             }
             val permissionResource = lambdaPermission(NoProps) {
@@ -66,7 +82,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
                 }
             }
             val routes = routeMapping.modules().mapNotNull {
-                it.module(WebSocketRoute.Predefined(apiId, +"integrations/" + websocketIntegrationResource.ref()))()
+                it.module(WebSocketRoute.Predefined(apiId, +"integrations/" + websocketIntegrationResource.ref(), authorizerResource?.ref()))()
             }
             val deployment = websocketDeployment(NoProps) {
                 deployment(
@@ -82,7 +98,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
                     modifyBuilder(it)
                 }
             }
-            WebSocket(websocketIntegrationResource, permissionResource, routes, stage, deployment)
+            WebSocket(websocketIntegrationResource, permissionResource, routes, stage, deployment, authorizerResource)
         }
     }
 }

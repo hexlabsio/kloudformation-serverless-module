@@ -46,8 +46,8 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
             authorizerArn: Value<String>? = null,
             modifications: Http.Parts.(Http.Predefined) -> Unit = {}
         ) = http(Http.Props(if (cors) Path.CorsConfig() else null, vpcEndpoint, authorizerArn), modifications)
-        fun websocket(modifications: WebSocket.Parts.(WebSocket.Predefined) -> Unit = {}) {
-            websocket(WebSocket.Props(), modifications)
+        fun websocket(authorizerArn: Value<String>? = null, modifications: WebSocket.Parts.(WebSocket.Predefined) -> Unit = {}) {
+            websocket(WebSocket.Props(authorizerArn), modifications)
         }
     }
 

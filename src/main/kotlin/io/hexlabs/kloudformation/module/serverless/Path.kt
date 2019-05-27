@@ -27,7 +27,6 @@ class Path(val resource: Map<String, Resource>, val subPaths: List<Path>, val me
         operator fun (() -> String).div(path: String) = PathBuilder(listOf("{${this()}}", path))
         operator fun (() -> String).div(parameter: () -> String) = PathBuilder(listOf("{${this()}}", "{${parameter()}}"))
     }
-    data class AuthProps(val authType: Value<String>, val authId: Value<String>)
     class Predefined(var parentId: Value<String>, var restApi: RestApi, var integrationUri: Value<String>, var cors: CorsConfig?, var authProps: AuthProps?) : Properties
 
     class Props(pathBuilder: PathBuilder.() -> PathBuilder = { this }) : Properties {

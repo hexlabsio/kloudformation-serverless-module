@@ -35,9 +35,6 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
     class Predefined(var serviceName: String, var stage: String, var lambdaArn: Value<String>) : Properties
     class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null, val authorizerArn: Value<String>? = null, val authorizerType: Value<String>? = null) : Properties
     class BasePathProps(val domain: Value<String>, val basePath: Value<String>? = null) : Properties
-
-    class AuthorizerProps(var resultTtl: Value<Int>, var providerArns: List<Value<String>>, val identitySource: Value<String>) : Properties
-
     class Parts {
         val httpRestApi = modification<RestApi.Builder, RestApi, NoProps>()
         val httpAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
@@ -105,7 +102,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                         integrationUri = lambdaIntegration,
                         cors = props.cors?.let { Path.CorsConfig() },
                         authProps = props.authorizerArn?.let {
-                            Path.AuthProps(props.authorizerType ?: +"COGNITO_USER_POOLS", authorizerResource!!.ref())
+                            AuthProps(props.authorizerType ?: +"COGNITO_USER_POOLS", authorizerResource!!.ref())
                         }
                         ))()
             }

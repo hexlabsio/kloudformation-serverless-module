@@ -10,7 +10,7 @@ import io.kloudformation.resource.aws.apigatewayv2.Route
 import io.kloudformation.resource.aws.apigatewayv2.route
 
 class WebSocketRoute(val route: Route) : Module {
-    class Predefined(var websocketApiId: Value<String>, var target: Value<String>) : Properties
+    class Predefined(var websocketApiId: Value<String>, var target: Value<String>, var authArn: Value<String>?) : Properties
     class Props(val routeKey: Value<String>) : Properties
     class Parts {
         val websocketRoute = modification<Route.Builder, Route, Props>()
@@ -21,6 +21,7 @@ class WebSocketRoute(val route: Route) : Module {
                 route(pre.websocketApiId, it.routeKey) {
                     authorizationType("NONE")
                     target(pre.target)
+                    pre.authArn?.let { auth -> authorizerId(auth) }
                     modifyBuilder(it)
                 }
             }
