@@ -15,18 +15,13 @@ import io.kloudformation.module.optionalModification
 import io.kloudformation.module.submodules
 import io.kloudformation.resource.aws.apigatewayv2.authorizer
 import io.kloudformation.resource.aws.apigatewayv2.Authorizer
-import io.kloudformation.resource.aws.apigatewayv2.Deployment
 import io.kloudformation.resource.aws.apigatewayv2.Integration
-import io.kloudformation.resource.aws.apigatewayv2.Stage
-import io.kloudformation.resource.aws.apigatewayv2.deployment
 import io.kloudformation.resource.aws.apigatewayv2.integration
-import io.kloudformation.resource.aws.apigatewayv2.stage
 import io.kloudformation.resource.aws.lambda.Permission
 import io.kloudformation.resource.aws.lambda.permission
 import io.kloudformation.unaryPlus
-import java.util.UUID
 
-class WebSocket(val integration: Integration, val permission: Permission, val routes: List<WebSocketRoute>, val stage: Stage, val deployment: Deployment, val authorizer: Authorizer?) : Module {
+class WebSocket(val integration: Integration, val permission: Permission, val routes: List<WebSocketRoute>, val authorizer: Authorizer?) : Module {
     class Predefined(
         var serviceName: String,
         var stage: String,
@@ -41,8 +36,6 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
         val websocketIntegration = modification<Integration.Builder, Integration, NoProps>()
         val websocketAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
         val lambdaPermission = modification<Permission.Builder, Permission, NoProps>()
-        val websocketStage = modification<Stage.Builder, Stage, NoProps>()
-        val websocketDeployment = modification<Deployment.Builder, Deployment, NoProps>()
         val routeMapping = submodules { pre: WebSocketRoute.Predefined, props: WebSocketRoute.Props -> WebSocketRoute.Builder(pre, props) }
         fun routeMapping(routeKey: Value<String>, modifications: WebSocketRoute.Parts.(WebSocketRoute.Predefined) -> Unit = {}) {
             routeMapping(WebSocketRoute.Props(routeKey), modifications)
@@ -84,21 +77,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
             val routes = routeMapping.modules().mapNotNull {
                 it.module(WebSocketRoute.Predefined(apiId, +"integrations/" + websocketIntegrationResource.ref(), authorizerResource?.ref()))()
             }
-            val deployment = websocketDeployment(NoProps) {
-                deployment(
-                        apiId = apiId,
-                        logicalName = "WebsocketsDeployment${UUID.randomUUID().toString().replace("-", "")}",
-                        dependsOn = routes.map { it.route.logicalName }
-                ) {
-                    modifyBuilder(it)
-                }
-            }
-            val stage = websocketStage(NoProps) {
-                stage(apiId, deployment.ref(), +pre.stage) {
-                    modifyBuilder(it)
-                }
-            }
-            WebSocket(websocketIntegrationResource, permissionResource, routes, stage, deployment, authorizerResource)
+            WebSocket(websocketIntegrationResource, permissionResource, routes, authorizerResource)
         }
     }
 }

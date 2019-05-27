@@ -24,12 +24,17 @@ import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
 import io.kloudformation.property.aws.iam.role.Policy
 import io.kloudformation.resource.aws.apigatewayv2.Api
+import io.kloudformation.resource.aws.apigatewayv2.Deployment
+import io.kloudformation.resource.aws.apigatewayv2.Stage
 import io.kloudformation.resource.aws.apigatewayv2.api
+import io.kloudformation.resource.aws.apigatewayv2.deployment
+import io.kloudformation.resource.aws.apigatewayv2.stage
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.iam.role
 import io.kloudformation.unaryPlus
+import java.util.UUID
 
-class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functions: List<ServerlessFunction>) : Module {
+class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functions: List<ServerlessFunction>, val websocketStage: Stage?, val websocketDeployment: Deployment?) : Module {
 
     open class PrivateConfig(val securityGroups: Value<List<Value<String>>>? = null, val subnetIds: Value<List<Value<String>>>? = null)
     object NoPrivateConfig : PrivateConfig()
@@ -39,6 +44,8 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
     ) {
         val globalWebsocketApi = modification<Api.Builder, Api, NoProps>()
         val serverlessFunction = SubModules({ pre: ServerlessFunction.Predefined, props: ServerlessFunction.Props -> ServerlessFunction.Builder(pre, props) })
+        val websocketStage = modification<Stage.Builder, Stage, NoProps>()
+        val websocketDeployment = modification<Deployment.Builder, Deployment, NoProps>()
         fun serverlessFunction(
             functionId: String,
             codeLocationKey: Value<String>,
@@ -82,7 +89,26 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
             val functions = serverlessFunction.modules().mapNotNull {
                 it.module(ServerlessFunction.Predefined(serviceName, stage, bucketName, roleResource, privateConfig, lazyWebsocketApi))()
             }
-            Serverless(roleResource, websocketApi, functions)
+            val routes = functions.mapNotNull { it.websocket?.routes }.flatten().map { it.route.logicalName }
+            var deployment: Deployment? = null
+            var websocketStage: Stage? = null
+            websocketApi?.let { api ->
+                deployment = websocketDeployment(NoProps) {
+                    deployment(
+                            apiId = api.ref(),
+                            logicalName = "WebsocketsDeployment${UUID.randomUUID().toString().replace("-", "")}",
+                            dependsOn = routes
+                    ) {
+                        modifyBuilder(it)
+                    }
+                }
+                websocketStage = websocketStage(NoProps) {
+                    stage(api.ref(), deployment!!.ref(), +stage) {
+                        modifyBuilder(it)
+                    }
+                }
+            }
+            Serverless(roleResource, websocketApi, functions, websocketStage, deployment)
         }
 
         companion object {

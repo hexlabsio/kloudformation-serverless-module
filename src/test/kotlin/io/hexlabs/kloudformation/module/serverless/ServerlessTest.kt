@@ -138,6 +138,7 @@ class ServerlessTest {
     fun `should create single websocket api`() {
         val template = KloudFormationTemplate.create {
             serverless("testService", bucketName = +"bucket") {
+
                 serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
                     websocket {
                         routeMapping(+"\$connect")
