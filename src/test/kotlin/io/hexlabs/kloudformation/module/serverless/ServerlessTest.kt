@@ -69,7 +69,7 @@ class ServerlessTest {
                 serverlessFunction(functionId = "myFunction2", codeLocationKey = +"Dont know", handler = +"a.b.c", runtime = +"nodejs8.10")
             }
         }
-        val roles = template.resources.resources.toList().filter { (key, value) -> value.kloudResourceType == "AWS::IAM::Role" }
+        val roles = template.filter<Role>()
         expect(1) { roles.size }
     }
 
