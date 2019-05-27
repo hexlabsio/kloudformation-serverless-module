@@ -60,7 +60,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
                 }
             }
             val authorizerResource = props.authorizerArn?.let { authorizerArn ->
-                websocketAuthorizer(AuthorizerProps(Value.Of(300), listOf(authorizerArn), +"route.request.querystring.Authorizer")) { authProps ->
+                websocketAuthorizer(AuthorizerProps(Value.Of(0), listOf(authorizerArn), +"route.request.querystring.Authorizer")) { authProps ->
                     authorizer(
                             apiId = apiId,
                             authorizerType = +"REQUEST",
@@ -68,7 +68,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
                             authorizerUri = +"arn:" + awsPartition + ":apigateway" + awsRegion + ":lambda:path/2015-03-31/functions/" + authProps.providerArns.first() + "/invocations",
                             name = +"websocket-auth-${pre.serviceName}"
                     ) {
-                        authorizerResultTtlInSeconds(authProps.resultTtl)
+                        modifyBuilder(authProps)
                     }
                 }
             }
