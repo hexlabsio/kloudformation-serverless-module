@@ -65,7 +65,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
                             apiId = apiId,
                             authorizerType = +"REQUEST",
                             identitySource = +listOf(authProps.identitySource),
-                            authorizerUri = +"arn:" + awsPartition + ":apigateway" + awsRegion + ":lambda:path/2015-03-31/functions/" + authProps.providerArns.first() + "/invocations",
+                            authorizerUri = +"arn:" + awsPartition + ":apigateway:" + awsRegion + ":lambda:path/2015-03-31/functions/" + authProps.providerArns.first() + "/invocations",
                             name = +"websocket-auth-${pre.serviceName}"
                     ) {
                         modifyBuilder(authProps)
