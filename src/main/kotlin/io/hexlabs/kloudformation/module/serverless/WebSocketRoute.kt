@@ -21,7 +21,10 @@ class WebSocketRoute(val route: Route) : Module {
                 route(pre.websocketApiId, it.routeKey) {
                     authorizationType("NONE")
                     target(pre.target)
-                    pre.authArn?.let { auth -> authorizerId(auth) }
+                    pre.authArn?.let { auth ->
+                        authorizationType("CUSTOM")
+                        authorizerId(auth)
+                    }
                     modifyBuilder(it)
                 }
             }

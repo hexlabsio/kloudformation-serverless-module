@@ -21,7 +21,7 @@ import io.kloudformation.resource.aws.lambda.Permission
 import io.kloudformation.resource.aws.lambda.permission
 import io.kloudformation.unaryPlus
 
-class WebSocket(val integration: Integration, val permission: Permission, val routes: List<WebSocketRoute>, val authorizer: Authorizer?) : Module {
+class WebSocket(val integration: Integration, val permission: Permission, val routes: List<WebSocketRoute>, val authorizer: Authorizer?, val authorizerPermission: Permission?) : Module {
     class Predefined(
         var serviceName: String,
         var stage: String,
@@ -35,6 +35,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
     class Parts {
         val websocketIntegration = modification<Integration.Builder, Integration, NoProps>()
         val websocketAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
+        val authorizerPermission = optionalModification<Permission.Builder, Permission, NoProps>()
         val lambdaPermission = modification<Permission.Builder, Permission, NoProps>()
         val routeMapping = submodules { pre: WebSocketRoute.Predefined, props: WebSocketRoute.Props -> WebSocketRoute.Builder(pre, props) }
         fun routeMapping(routeKey: Value<String>, modifications: WebSocketRoute.Parts.(WebSocketRoute.Predefined) -> Unit = {}) {
@@ -65,6 +66,17 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
                     }
                 }
             }
+            val authorizerPermissionResource = props.authorizerArn?.let { authorizerArn ->
+                authorizerPermission(NoProps) {
+                    permission(
+                            action = +"lambda:InvokeFunction",
+                            functionName = authorizerArn,
+                            principal = +"apigateway." + awsUrlSuffix,
+                            dependsOn = listOf(logicalName)) {
+                        modifyBuilder(it)
+                    }
+                }
+            }
             val permissionResource = lambdaPermission(NoProps) {
                 permission(
                         action = +"lambda:InvokeFunction",
@@ -77,7 +89,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
             val routes = routeMapping.modules().mapNotNull {
                 it.module(WebSocketRoute.Predefined(apiId, +"integrations/" + websocketIntegrationResource.ref(), authorizerResource?.ref()))()
             }
-            WebSocket(websocketIntegrationResource, permissionResource, routes, authorizerResource)
+            WebSocket(websocketIntegrationResource, permissionResource, routes, authorizerResource, authorizerPermissionResource)
         }
     }
 }
