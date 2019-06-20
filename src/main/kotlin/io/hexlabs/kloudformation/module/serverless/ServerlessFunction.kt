@@ -11,6 +11,7 @@ import io.kloudformation.resource.aws.logs.LogGroup
 import io.kloudformation.resource.aws.logs.logGroup
 import io.kloudformation.module.Module
 import io.kloudformation.module.NoProps
+import io.kloudformation.module.Parts
 import io.kloudformation.module.Properties
 import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.modification
@@ -20,14 +21,14 @@ import io.kloudformation.unaryPlus
 
 data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val http: Http?, val websocket: WebSocket?) : Module {
 
-    class Predefined(var serviceName: String, var stage: String, var deploymentBucketArn: Value<String>, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?, val lazyWebsocketInfo: () -> Pair<String, Value<String>>) : Properties
-    sealed class Props(val functionId: String, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties {
+    class Predefined(var serviceName: String, var stage: String, var deploymentBucketArn: Value<String>, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?, val lazyWebsocketInfo: () -> Pair<String, Value<String>>) : Properties()
+    sealed class Props(val functionId: String, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties() {
         class BucketLocationProps(val codeLocationKey: Value<String>, functionId: String, handler: Value<String>, runtime: Value<String>, privateConfig: Serverless.PrivateConfig? = null) : Props(functionId, handler, runtime, privateConfig)
         class CodeProps(val code: Value<String>, functionId: String, handler: Value<String>, runtime: Value<String>, privateConfig: Serverless.PrivateConfig? = null) : Props(functionId, handler, runtime, privateConfig)
     }
 
-    class Parts {
-        data class LambdaProps(var code: Code, var handler: Value<String>, var role: Value<String>, var runtime: Value<String>) : Properties
+    class Parts : io.kloudformation.module.Parts() {
+        data class LambdaProps(var code: Code, var handler: Value<String>, var role: Value<String>, var runtime: Value<String>) : Properties()
         val lambdaLogGroup = modification<LogGroup.Builder, LogGroup, NoProps>()
         val lambdaRole = optionalModification<Role.Builder, Role, Serverless.Parts.RoleProps>(absent = true)
         val lambdaFunction = modification<Function.Builder, Function, LambdaProps>()
@@ -90,14 +91,14 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
                     modifyBuilder(props)
                 }
             }
-            val http = http.module(Http.Predefined(pre.serviceName, pre.stage, lambdaResource.Arn()))()
-            val websocket = websocket.module(WebSocket.Predefined(
+            val http = build(http, Http.Predefined(pre.serviceName, pre.stage, lambdaResource.Arn()))
+            val websocket = build(websocket, WebSocket.Predefined(
                     pre.serviceName,
                     pre.stage,
                     lambdaResource.logicalName,
                     lambdaResource.Arn(),
                     pre.lazyWebsocketInfo
-            ))()
+            ))
             ServerlessFunction(logGroupResource, roleResource, lambdaResource, http, websocket)
         }
     }

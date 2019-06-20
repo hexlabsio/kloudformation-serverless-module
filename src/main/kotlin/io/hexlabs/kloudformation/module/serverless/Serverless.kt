@@ -17,11 +17,12 @@ import io.kloudformation.module.Module
 import io.kloudformation.module.ModuleBuilder
 import io.kloudformation.module.NoProps
 import io.kloudformation.module.OptionalModification
+import io.kloudformation.module.Parts
 import io.kloudformation.module.Properties
-import io.kloudformation.module.SubModules
 import io.kloudformation.module.builder
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
+import io.kloudformation.module.submodules
 import io.kloudformation.property.aws.iam.role.Policy
 import io.kloudformation.resource.aws.apigatewayv2.Api
 import io.kloudformation.resource.aws.apigatewayv2.Deployment
@@ -41,9 +42,9 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
 
     class Parts(
         val globalRole: OptionalModification<Role.Builder, Role, RoleProps> = optionalModification(absent = false)
-    ) {
+    ) : io.kloudformation.module.Parts() {
         val globalWebsocketApi = modification<Api.Builder, Api, NoProps>()
-        val serverlessFunction = SubModules({ pre: ServerlessFunction.Predefined, props: ServerlessFunction.Props -> ServerlessFunction.Builder(pre, props) })
+        val serverlessFunction = submodules { pre: ServerlessFunction.Predefined, props: ServerlessFunction.Props -> ServerlessFunction.Builder(pre, props) }
         val websocketStage = modification<Stage.Builder, Stage, NoProps>()
         val websocketDeployment = modification<Deployment.Builder, Deployment, NoProps>()
         fun serverlessFunction(
@@ -62,7 +63,7 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
             privateConfig: Serverless.PrivateConfig? = null,
             modifications: ServerlessFunction.Parts.(ServerlessFunction.Predefined) -> Unit = {}
         ) = serverlessFunction(ServerlessFunction.Props.CodeProps(code, functionId, handler, runtime, privateConfig), modifications)
-        data class RoleProps(var assumedRolePolicyDocument: PolicyDocument) : Properties
+        data class RoleProps(var assumedRolePolicyDocument: PolicyDocument) : Properties()
     }
 
     class Builder(
@@ -87,7 +88,7 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
                 websocketApi!!.logicalName to websocketApi!!.ref()
             }
             val functions = serverlessFunction.modules().mapNotNull {
-                it.module(ServerlessFunction.Predefined(serviceName, stage, bucketName, roleResource, privateConfig, lazyWebsocketApi))()
+                build(it, ServerlessFunction.Predefined(serviceName, stage, bucketName, roleResource, privateConfig, lazyWebsocketApi))
             }
             val routes = functions.mapNotNull { it.websocket?.routes }.flatten().map { it.route.logicalName }
             var deployment: Deployment? = null

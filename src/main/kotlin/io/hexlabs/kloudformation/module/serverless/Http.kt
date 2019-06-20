@@ -32,10 +32,10 @@ import io.kloudformation.unaryPlus
 import java.util.UUID
 
 class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission, val basePathMapping: HttpBasePathMapping?, val authorizer: Authorizer?) : Module {
-    class Predefined(var serviceName: String, var stage: String, var lambdaArn: Value<String>) : Properties
-    class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null, val authorizerArn: Value<String>? = null, val authorizerType: Value<String>? = null) : Properties
-    class BasePathProps(val domain: Value<String>, val basePath: Value<String>? = null) : Properties
-    class Parts {
+    class Predefined(var serviceName: String, var stage: String, var lambdaArn: Value<String>) : Properties()
+    class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null, val authorizerArn: Value<String>? = null, val authorizerType: Value<String>? = null) : Properties()
+    class BasePathProps(val domain: Value<String>, val basePath: Value<String>? = null) : Properties()
+    class Parts : io.kloudformation.module.Parts() {
         val httpRestApi = modification<RestApi.Builder, RestApi, NoProps>()
         val httpAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
         val httpDeployment = modification<Deployment.Builder, Deployment, NoProps>()
@@ -96,7 +96,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
             ))
             val lambdaIntegration = +"arn:" + awsPartition + ":apigateway:" + awsRegion + ":lambda:path/2015-03-31/functions/" + pre.lambdaArn + "/invocations"
             val paths = path.modules().mapNotNull {
-                it.module(Path.Predefined(
+                build(it, Path.Predefined(
                         parentId = restApiResource.RootResourceId(),
                         restApi = restApiResource,
                         integrationUri = lambdaIntegration,
@@ -104,7 +104,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                         authProps = props.authorizerArn?.let {
                             AuthProps(props.authorizerType ?: +"COGNITO_USER_POOLS", authorizerResource!!.ref())
                         }
-                        ))()
+                ))
             }
             fun subPaths(path: Path): List<Path> = listOf(path) + path.subPaths.flatMap { subPaths(it) }
             val allMethods = paths.flatMap { subPaths(it) }.flatMap { it.methods }.map { it.method.logicalName }
@@ -118,7 +118,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                     modifyBuilder(it)
                 }
             }
-            val httpBasePathMapping = httpBasePathMapping.module(HttpBasePathMapping.Predefined(restApiResource.ref(), pre.stage, deployment.logicalName))()
+            val httpBasePathMapping = build(httpBasePathMapping, HttpBasePathMapping.Predefined(restApiResource.ref(), pre.stage, deployment.logicalName))
             val lambdaPermissionResource = lambdaPermission(NoProps) {
                 permission(
                         action = +"lambda:InvokeFunction",

@@ -10,9 +10,9 @@ import io.kloudformation.resource.aws.apigateway.BasePathMapping
 import io.kloudformation.resource.aws.apigateway.basePathMapping
 
 class HttpBasePathMapping(val basePathMapping: BasePathMapping) : Module {
-    class Predefined(var restApiId: Value<String>, var stage: String, var dependsOn: String) : Properties
-    class Props(val domain: Value<String>, val basePath: Value<String>?) : Properties
-    class Parts {
+    class Predefined(var restApiId: Value<String>, var stage: String, var dependsOn: String) : Properties()
+    class Props(val domain: Value<String>, val basePath: Value<String>?) : Properties()
+    class Parts : io.kloudformation.module.Parts() {
         val httpBasePathMapping = modification<BasePathMapping.Builder, BasePathMapping, Props>()
     }
     class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<HttpBasePathMapping, Parts, Predefined>(pre, Parts()) {

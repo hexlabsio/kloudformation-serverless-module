@@ -28,11 +28,11 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
         var lambdaLogicalName: String,
         var lambdaArn: Value<String>,
         val lazyWebsocketInfo: () -> Pair<String, Value<String>>
-    ) : Properties
+    ) : Properties()
 
-    class Props(val authorizerArn: Value<String>? = null) : Properties
+    class Props(val authorizerArn: Value<String>? = null) : Properties()
 
-    class Parts {
+    class Parts : io.kloudformation.module.Parts() {
         val websocketIntegration = modification<Integration.Builder, Integration, NoProps>()
         val websocketAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
         val authorizerPermission = optionalModification<Permission.Builder, Permission, NoProps>()
@@ -87,7 +87,7 @@ class WebSocket(val integration: Integration, val permission: Permission, val ro
                 }
             }
             val routes = routeMapping.modules().mapNotNull {
-                it.module(WebSocketRoute.Predefined(apiId, +"integrations/" + websocketIntegrationResource.ref(), authorizerResource?.ref()))()
+                build(it, WebSocketRoute.Predefined(apiId, +"integrations/" + websocketIntegrationResource.ref(), authorizerResource?.ref()))
             }
             WebSocket(websocketIntegrationResource, permissionResource, routes, authorizerResource, authorizerPermissionResource)
         }

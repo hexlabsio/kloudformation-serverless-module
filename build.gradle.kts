@@ -16,9 +16,9 @@ plugins {
 }
 
 fun version(): String {
-    val lastVersionBuildNumber= 13
+    val lastVersionBuildNumber= 24
     val buildNumber = System.getProperty("BUILD_NUM")?.let { (it.toInt() - lastVersionBuildNumber).toString() } ?: "-SNAPSHOT"
-    val version = "1.0.$buildNumber"
+    val version = "1.1.$buildNumber"
     println("building version $version")
     return version
 }
@@ -36,7 +36,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation("io.kloudformation:kloudformation:1.0.7")
+    implementation("io.kloudformation:kloudformation:1.1.2")
     testImplementation(group = "org.jetbrains.kotlin", name = "kotlin-test-junit5", version = "1.3.21")
     testImplementation(group = "org.junit.jupiter", name = "junit-jupiter-api", version = "1.3.21")
     testRuntime(group = "org.junit.jupiter", name = "junit-jupiter-engine", version = "5.0.0")

@@ -24,14 +24,14 @@ enum class Method {
 
 class HttpMethod(val method: io.kloudformation.resource.aws.apigateway.Method, val corsEnabled: Boolean) : Module {
 
-    class Predefined(var cors: Boolean, var restApiId: Value<String>, var resourceId: Value<String>, var integrationUri: Value<String>, val normalizedPathName: String, var authProps: AuthProps?) : Properties
+    class Predefined(var cors: Boolean, var restApiId: Value<String>, var resourceId: Value<String>, var integrationUri: Value<String>, val normalizedPathName: String, var authProps: AuthProps?) : Properties()
 
-    class Props(val httpMethod: String) : Properties
+    class Props(val httpMethod: String) : Properties()
 
     class Parts(
         val httpMethod: Modification<io.kloudformation.resource.aws.apigateway.Method.Builder, io.kloudformation.resource.aws.apigateway.Method, MethodProps> = modification()
-    ) {
-        class MethodProps(var httpMethod: Value<String>) : Properties
+    ) : io.kloudformation.module.Parts() {
+        class MethodProps(var httpMethod: Value<String>) : Properties()
     }
 
     class Builder(pre: Predefined, val props: Props) : SubModuleBuilder<HttpMethod, Parts, Predefined>(pre, Parts()) {
