@@ -17,9 +17,10 @@ import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
 import io.kloudformation.module.submodule
+import io.kloudformation.module.value
 import io.kloudformation.unaryPlus
 
-data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val http: Http?, val websocket: WebSocket?) : Module {
+data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val http: Http?, val websocket: WebSocket?, val sns: Sns?) : Module {
 
     class Predefined(var serviceName: String, var stage: String, var deploymentBucketArn: Value<String>, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?, val lazyWebsocketInfo: () -> Pair<String, Value<String>>) : Properties()
     sealed class Props(val functionId: String, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties() {
@@ -33,23 +34,18 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
         val lambdaRole = optionalModification<Role.Builder, Role, Serverless.Parts.RoleProps>(absent = true)
         val lambdaFunction = modification<Function.Builder, Function, LambdaProps>()
         val http = submodule { pre: Http.Predefined, props: Http.Props -> Http.Builder(pre, props) }
-
         val websocket = submodule { pre: WebSocket.Predefined, props: WebSocket.Props -> WebSocket.Builder(pre, props) }
-        fun http(
-            cors: Path.CorsConfig,
-            vpcEndpoint: Value<String>? = null,
-            authorizerArn: Value<String>? = null,
-            modifications: Http.Parts.(Http.Predefined) -> Unit = {}
-        ) = http(Http.Props(cors, vpcEndpoint, authorizerArn), modifications)
         fun http(
             cors: Boolean = false,
             vpcEndpoint: Value<String>? = null,
             authorizerArn: Value<String>? = null,
             modifications: Http.Parts.(Http.Predefined) -> Unit = {}
-        ) = http(Http.Props(if (cors) Path.CorsConfig() else null, vpcEndpoint, authorizerArn), modifications)
+        ) = http(Http.Props(cors, vpcEndpoint, authorizerArn), modifications)
         fun websocket(authorizerArn: Value<String>? = null, modifications: WebSocket.Parts.(WebSocket.Predefined) -> Unit = {}) {
             websocket(WebSocket.Props(authorizerArn), modifications)
         }
+        val sns = submodule { pre: Sns.Predefined, props: Sns.Props -> Sns.Builder(pre, props) }
+        fun sns(modifications: Sns.Parts.(Sns.Predefined) -> Unit = {}) = sns(Sns.Props(), modifications)
     }
 
     class Builder(
@@ -71,8 +67,16 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
                 is Props.CodeProps -> Code(zipFile = props.code)
             }
             if (pre.globalRole == null) lambdaRole.keep()
-            val roleResource = Serverless.Builder.run { roleFor(pre.serviceName, pre.stage, props.functionId, lambdaRole) } ?: pre.globalRole
-            val lambdaResource = lambdaFunction(Parts.LambdaProps(code, props.handler, roleResource?.Arn() ?: +"", props.runtime)) { props ->
+            var roleResource = Serverless.Builder.run { roleFor(pre.serviceName, pre.stage, props.functionId, lambdaRole) } ?: pre.globalRole!!
+            if (websocket.exists()) {
+                val name = "${pre.stage}-${pre.serviceName}-websockets"
+                if (roleResource.policies.orEmpty().find { it.policyName.value() == name } == null) {
+                    this@buildModule.resources.remove(roleResource)
+                    roleResource = roleResource.withWebsocketPolicy(name)
+                    this@buildModule.resources.add(roleResource)
+                }
+            }
+            val lambdaResource = lambdaFunction(Parts.LambdaProps(code, props.handler, roleResource.Arn(), props.runtime)) { props ->
                 function(
                         props.code,
                         props.handler,
@@ -92,6 +96,7 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
                 }
             }
             val http = build(http, Http.Predefined(pre.serviceName, pre.stage, lambdaResource.Arn()))
+            val sns = build(sns, Sns.Predefined(lambdaResource.ref(), lambdaResource.Arn()))
             val websocket = build(websocket, WebSocket.Predefined(
                     pre.serviceName,
                     pre.stage,
@@ -99,7 +104,7 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
                     lambdaResource.Arn(),
                     pre.lazyWebsocketInfo
             ))
-            ServerlessFunction(logGroupResource, roleResource, lambdaResource, http, websocket)
+            ServerlessFunction(logGroupResource, roleResource, lambdaResource, http, websocket, sns)
         }
     }
 }

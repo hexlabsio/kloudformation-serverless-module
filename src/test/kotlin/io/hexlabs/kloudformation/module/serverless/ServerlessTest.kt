@@ -4,6 +4,7 @@ import io.kloudformation.Value
 import io.kloudformation.function.Att
 import io.kloudformation.function.Reference
 import io.kloudformation.model.KloudFormationTemplate
+import io.kloudformation.module.value
 import io.kloudformation.property.aws.lambda.function.Code
 import io.kloudformation.resource.aws.apigateway.BasePathMapping
 import io.kloudformation.resource.aws.apigateway.Resource
@@ -11,8 +12,11 @@ import io.kloudformation.resource.aws.apigateway.RestApi
 import io.kloudformation.resource.aws.apigatewayv2.Api
 import io.kloudformation.resource.aws.iam.Role
 import io.kloudformation.resource.aws.lambda.Function
+import io.kloudformation.resource.aws.lambda.Permission
 import io.kloudformation.resource.aws.logs.LogGroup
 import io.kloudformation.resource.aws.s3.bucket
+import io.kloudformation.resource.aws.sns.Subscription
+import io.kloudformation.resource.aws.sns.Topic
 import io.kloudformation.toYaml
 import io.kloudformation.unaryPlus
 import org.junit.jupiter.api.Test
@@ -20,7 +24,7 @@ import kotlin.test.expect
 
 class ServerlessTest {
 
-    inline fun <reified T> KloudFormationTemplate.filter() = resources.resources.toList().filter { it.second is T }.map { it.first to (it.second as T) }
+    private inline fun <reified T> KloudFormationTemplate.filter() = resources.resources.toList().filter { it.second is T }.map { it.first to (it.second as T) }
 
     @Test
     fun `should have logGroup Role and Function by default`() {
@@ -46,8 +50,11 @@ class ServerlessTest {
                         runtime = +"nodejs8.10"
                     ) {
                         lambdaFunction { tracingConfig { mode("Active") } }
-                        http(cors = true) {
+                        http(cors = false) {
                             path({ "abc" / "def" }) {
+                                cors {
+                                    it.origin = +"test"
+                                }
                                 Method.GET()
                                 Method.POST()
                                 path({ "ghi" / { "uvw" } }) {
@@ -79,6 +86,23 @@ class ServerlessTest {
             serverless("testService", bucketName = +"bucket") {
                 serverlessFunction(functionId = "myFunction", codeLocationKey = +"Dont know", handler = +"a.b.c", runtime = +"nodejs8.10")
                 serverlessFunction(functionId = "myFunction2", codeLocationKey = +"Dont know", handler = +"a.b.c", runtime = +"nodejs8.10") {
+                    lambdaRole {
+                        println("dkfajsdlk")
+                    }
+                }
+            }
+        }
+        val roles = template.filter<Role>()
+        expect(2) { roles.size }
+    }
+    @Test
+    fun `should use local roles only`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunction(functionId = "myFunction", codeLocationKey = +"Dont know", handler = +"a.b.c", runtime = +"nodejs8.10") {
+                    lambdaRole {}
+                }
+                serverlessFunction(functionId = "myFunction2", codeLocationKey = +"Dont know", handler = +"a.b.c", runtime = +"nodejs8.10") {
                     lambdaRole {}
                 }
             }
@@ -104,7 +128,9 @@ class ServerlessTest {
             serverless("testService", bucketName = +"bucket") {
                 serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
                     http(cors = false) {
-                        path("/") { Method.GET() }
+                        path("/") {
+                            Method.GET()
+                        }
                     }
                 }
             }
@@ -154,5 +180,43 @@ class ServerlessTest {
         }
         println(template.toYaml())
         expect(1) { template.filter<Api>().size }
+    }
+
+    @Test
+    fun `should create topic permission and subscription`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    sns()
+                }
+            }
+        }
+        println(template.toYaml())
+        expect(1) { template.filter<Topic>().size }
+        expect(1) { template.filter<Permission>().size }
+        expect(1) { template.filter<Subscription>().size }
+    }
+
+    @Test
+    fun `should create permission and subscription and not topic when provided`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    sns {
+                        snsTopic.replaceWith(+"OtherTopic")
+                    }
+                }
+            }
+        }
+        println(template.toYaml())
+        expect(0) { template.filter<Topic>().size }
+        expect(1) { template.filter<Permission>().size }
+        expect(1) { template.filter<Subscription>().size }
+        template.filter<Permission>().first().second.let {
+            expect("OtherTopic") { it.sourceArn?.value() }
+        }
+        template.filter<Subscription>().first().second.let {
+            expect("OtherTopic") { it.topicArn.value() }
+        }
     }
 }

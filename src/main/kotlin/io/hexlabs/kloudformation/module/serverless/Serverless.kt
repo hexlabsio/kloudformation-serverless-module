@@ -17,7 +17,6 @@ import io.kloudformation.module.Module
 import io.kloudformation.module.ModuleBuilder
 import io.kloudformation.module.NoProps
 import io.kloudformation.module.OptionalModification
-import io.kloudformation.module.Parts
 import io.kloudformation.module.Properties
 import io.kloudformation.module.builder
 import io.kloudformation.module.modification
@@ -75,7 +74,7 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
     ) : ModuleBuilder<Serverless, Parts>(Parts()) {
 
         override fun KloudFormation.buildModule(): Parts.() -> Serverless = {
-            val roleResource = roleFor(serviceName, stage, "lambda", globalRole)
+            var roleResource = roleFor(serviceName, stage, "lambda", globalRole)
             var websocketApi: Api? = null
             val lazyWebsocketApi = {
                 if (websocketApi == null) {
@@ -89,6 +88,9 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
             }
             val functions = serverlessFunction.modules().mapNotNull {
                 build(it, ServerlessFunction.Predefined(serviceName, stage, bucketName, roleResource, privateConfig, lazyWebsocketApi))
+            }
+            if (functions.all { it.role != roleResource }) {
+                roleResource?.let { this@buildModule.resources.remove(it) }
             }
             val routes = functions.mapNotNull { it.websocket?.routes }.flatten().map { it.route.logicalName }
             var deployment: Deployment? = null
@@ -135,10 +137,6 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
                                                         PolicyStatement(
                                                                 action = action("logs:PutLogEvents"),
                                                                 resource = resource(logResource + ":*")
-                                                        ),
-                                                        PolicyStatement(
-                                                                action = action("execute-api:ManageConnections"),
-                                                                resource = resource("arn:aws:execute-api:*:*:*/@connections/*")
                                                         )
                                                 )
                                         )
@@ -156,6 +154,17 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
         }
     }
 }
+
+fun Role.withWebsocketPolicy(name: String) = copy(policies = policies.orEmpty() + Policy(
+            policyName = +name,
+            policyDocument = PolicyDocument(
+                    version = IamPolicyVersion.V2.version,
+                    statement = listOf(PolicyStatement(
+                        action = action("execute-api:ManageConnections"),
+                        resource = resource("arn:aws:execute-api:*:*:*/@connections/*")
+                    ))
+            )
+    ))
 
 fun KloudFormation.serverless(
     serviceName: String,

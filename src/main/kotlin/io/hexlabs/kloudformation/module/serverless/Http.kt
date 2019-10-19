@@ -33,8 +33,7 @@ import java.util.UUID
 
 class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployment, val permission: Permission, val basePathMapping: HttpBasePathMapping?, val authorizer: Authorizer?) : Module {
     class Predefined(var serviceName: String, var stage: String, var lambdaArn: Value<String>) : Properties()
-    class Props(val cors: Path.CorsConfig? = null, val vpcEndpoint: Value<String>? = null, val authorizerArn: Value<String>? = null, val authorizerType: Value<String>? = null) : Properties()
-    class BasePathProps(val domain: Value<String>, val basePath: Value<String>? = null) : Properties()
+    class Props(val cors: Boolean = false, val vpcEndpoint: Value<String>? = null, val authorizerArn: Value<String>? = null, val authorizerType: Value<String>? = null) : Properties()
     class Parts : io.kloudformation.module.Parts() {
         val httpRestApi = modification<RestApi.Builder, RestApi, NoProps>()
         val httpAuthorizer = optionalModification<Authorizer.Builder, Authorizer, AuthorizerProps>()
@@ -100,7 +99,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                         parentId = restApiResource.RootResourceId(),
                         restApi = restApiResource,
                         integrationUri = lambdaIntegration,
-                        cors = props.cors?.let { Path.CorsConfig() },
+                        cors = props.cors,
                         authProps = props.authorizerArn?.let {
                             AuthProps(props.authorizerType ?: +"COGNITO_USER_POOLS", authorizerResource!!.ref())
                         }
