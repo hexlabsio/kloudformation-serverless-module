@@ -37,11 +37,13 @@ class Sns(val topic: Topic?, val permission: Permission, val subscription: Subsc
             val topicPermission = snsPermission(NoProps) {
                 permission(+"lambda:InvokeFunction", pre.lambdaName, +"sns.amazonaws.com") {
                     sourceArn(topicResource)
+                    modifyBuilder(it)
                 }
             }
             val topicSubscription = snsSubscription(NoProps) {
                 subscription(+"lambda", topicResource) {
                     endpoint(pre.lambdaArn)
+                    modifyBuilder(it)
                 }
             }
             Sns(actualTopic, topicPermission, topicSubscription)
