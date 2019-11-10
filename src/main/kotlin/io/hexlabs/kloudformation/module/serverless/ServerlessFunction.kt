@@ -17,10 +17,11 @@ import io.kloudformation.module.SubModuleBuilder
 import io.kloudformation.module.modification
 import io.kloudformation.module.optionalModification
 import io.kloudformation.module.submodule
+import io.kloudformation.module.submodules
 import io.kloudformation.module.value
 import io.kloudformation.unaryPlus
 
-data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val http: Http?, val websocket: WebSocket?, val sns: Sns?) : Module {
+data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val function: Function, val http: Http?, val websocket: WebSocket?, val sns: List<Sns>) : Module {
 
     class Predefined(var serviceName: String, var stage: String, var deploymentBucketArn: Value<String>, var globalRole: Role?, var privateConfig: Serverless.PrivateConfig?, val lazyWebsocketInfo: () -> Pair<String, Value<String>>) : Properties()
     sealed class Props(val functionId: String, val handler: Value<String>, val runtime: Value<String>, val privateConfig: Serverless.PrivateConfig? = null) : Properties() {
@@ -44,7 +45,7 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
         fun websocket(authorizerArn: Value<String>? = null, modifications: WebSocket.Parts.(WebSocket.Predefined) -> Unit = {}) {
             websocket(WebSocket.Props(authorizerArn), modifications)
         }
-        val sns = submodule { pre: Sns.Predefined, props: Sns.Props -> Sns.Builder(pre, props) }
+        val sns = submodules { pre: Sns.Predefined, props: Sns.Props -> Sns.Builder(pre, props) }
         fun sns(modifications: Sns.Parts.(Sns.Predefined) -> Unit = {}) = sns(Sns.Props(), modifications)
     }
 
@@ -96,7 +97,9 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
                 }
             }
             val http = build(http, Http.Predefined(pre.serviceName, pre.stage, lambdaResource.Arn()))
-            val sns = build(sns, Sns.Predefined(lambdaResource.ref(), lambdaResource.Arn()))
+            val sns = sns.modules().mapNotNull {
+                build(it, Sns.Predefined(lambdaResource.ref(), lambdaResource.Arn()))
+            }
             val websocket = build(websocket, WebSocket.Predefined(
                     pre.serviceName,
                     pre.stage,

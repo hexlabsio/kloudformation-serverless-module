@@ -198,6 +198,22 @@ class ServerlessTest {
     }
 
     @Test
+    fun `should create 2 topics permissions and subscriptions`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    sns()
+                    sns()
+                }
+            }
+        }
+        println(template.toYaml())
+        expect(2) { template.filter<Topic>().size }
+        expect(2) { template.filter<Permission>().size }
+        expect(2) { template.filter<Subscription>().size }
+    }
+
+    @Test
     fun `should create permission and subscription and not topic when provided`() {
         val template = KloudFormationTemplate.create {
             serverless("testService", bucketName = +"bucket") {
