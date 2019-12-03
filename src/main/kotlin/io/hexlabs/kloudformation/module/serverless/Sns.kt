@@ -15,11 +15,13 @@ import io.kloudformation.resource.aws.sns.subscription
 import io.kloudformation.resource.aws.sns.topic
 import io.kloudformation.unaryPlus
 
+class NamedProps(var logicalName: String) : Properties()
+
 class Sns(val topic: Topic?, val permission: Permission, val subscription: Subscription) : Module {
     class Predefined(var lambdaName: Value<String>, var lambdaArn: Value<String>) : Properties()
     class Props : Properties()
     class Parts : io.kloudformation.module.Parts() {
-        val snsTopic = modification<Topic.Builder, Value<String>, NoProps>()
+        val snsTopic = modification<Topic.Builder, Value<String>, NamedProps>()
         val snsPermission = modification<Permission.Builder, Permission, NoProps>()
         val snsSubscription = modification<Subscription.Builder, Subscription, NoProps>()
     }
@@ -28,8 +30,8 @@ class Sns(val topic: Topic?, val permission: Permission, val subscription: Subsc
 
         override fun KloudFormation.buildModule(): Parts.() -> Sns = {
             var actualTopic: Topic? = null
-            val topicResource = snsTopic(NoProps) {
-                actualTopic = topic {
+            val topicResource = snsTopic(NamedProps(allocateLogicalName("Topic"))) {
+                actualTopic = topic(logicalName = it.logicalName) {
                     modifyBuilder(it)
                 }
                 actualTopic!!.ref()

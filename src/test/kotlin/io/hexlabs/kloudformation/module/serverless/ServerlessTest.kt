@@ -198,6 +198,21 @@ class ServerlessTest {
     }
 
     @Test
+    fun `should create topic with logical name`() {
+        val template = KloudFormationTemplate.create {
+            serverless("testService", bucketName = +"bucket") {
+                serverlessFunctionWithCode(functionId = "myFunction", handler = +"a.b.c", runtime = +"nodejs8.10", code = +"Some Code") {
+                    sns {
+                        snsTopic.props { logicalName = "testName" }
+                    }
+                }
+            }
+        }
+        val topic = template.filter<Topic>().first()
+        expect("testName") { topic.first }
+    }
+
+    @Test
     fun `should create 2 topics permissions and subscriptions`() {
         val template = KloudFormationTemplate.create {
             serverless("testService", bucketName = +"bucket") {
