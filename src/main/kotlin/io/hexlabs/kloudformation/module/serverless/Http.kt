@@ -8,7 +8,6 @@ import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsParti
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsRegion
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsUrlSuffix
 import io.kloudformation.model.Output
-import io.kloudformation.model.iam.IamPolicyVersion
 import io.kloudformation.model.iam.action
 import io.kloudformation.model.iam.policyDocument
 import io.kloudformation.model.iam.resource
@@ -66,7 +65,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
                         endpointConfiguration {
                             types(listOf(+"PRIVATE"))
                         }
-                        policy(policyDocument(version = IamPolicyVersion.V2.version) {
+                        policy(policyDocument {
                             statement(
                                     action = action("execute-api:Invoke"),
                                     resource = resource(+"arn:aws:execute-api:us-east-1:" + awsAccountId + ":*")

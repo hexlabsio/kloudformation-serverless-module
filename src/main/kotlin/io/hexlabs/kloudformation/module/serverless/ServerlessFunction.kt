@@ -84,7 +84,7 @@ data class ServerlessFunction(val logGroup: LogGroup, val role: Role?, val funct
                         props.role,
                         props.runtime,
                         logicalName = "Function" + this@Builder.props.functionId.normalize(),
-                        dependsOn = listOfNotNull(logGroupResource.logicalName, roleResource?.logicalName)) {
+                        dependsOn = listOfNotNull(logGroupResource.logicalName, roleResource.logicalName)) {
                     val privateOverride = this@Builder.props.privateConfig
                     if (privateOverride !is Serverless.NoPrivateConfig) {
                         (privateOverride ?: pre.privateConfig)?.let { config ->

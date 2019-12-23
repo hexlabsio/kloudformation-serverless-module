@@ -6,7 +6,7 @@ import io.kloudformation.function.plus
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsAccountId
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsPartition
 import io.kloudformation.model.KloudFormationTemplate.Builder.Companion.awsRegion
-import io.kloudformation.model.iam.IamPolicyVersion
+import io.kloudformation.model.iam.Version
 import io.kloudformation.model.iam.PolicyDocument
 import io.kloudformation.model.iam.PolicyStatement
 import io.kloudformation.model.iam.PrincipalType
@@ -116,7 +116,7 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
 
         companion object {
             fun KloudFormation.roleFor(serviceName: String, stage: String, name: String, roleMod: OptionalModification<Role.Builder, Role, Parts.RoleProps>): Role? {
-                val defaultAssumeRole = policyDocument(version = IamPolicyVersion.V2.version) {
+                val defaultAssumeRole = policyDocument {
                     statement(action = action("sts:AssumeRole")) {
                         principal(PrincipalType.SERVICE, listOf(+"lambda.amazonaws.com"))
                     }
@@ -128,7 +128,7 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
                                 Policy(
                                         policyName = +"$stage-$serviceName-$name",
                                         policyDocument = PolicyDocument(
-                                                version = IamPolicyVersion.V2.version,
+                                                version = Version.V2.version,
                                                 statement = listOf(
                                                         PolicyStatement(
                                                                 action = action("logs:CreateLogStream"),
@@ -158,7 +158,7 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
 fun Role.withWebsocketPolicy(name: String) = copy(policies = policies.orEmpty() + Policy(
             policyName = +name,
             policyDocument = PolicyDocument(
-                    version = IamPolicyVersion.V2.version,
+                    version = Version.V2.version,
                     statement = listOf(PolicyStatement(
                         action = action("execute-api:ManageConnections"),
                         resource = resource("arn:aws:execute-api:*:*:*/@connections/*")
