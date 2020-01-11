@@ -60,7 +60,7 @@ class Http(val restApi: RestApi, val paths: List<Path>, val deployment: Deployme
         override fun KloudFormation.buildModule(): Parts.() -> Http = {
             val restApiResource = httpRestApi(NoProps) {
                 restApi {
-                    name("${pre.stage}-${pre.serviceName}")
+                    name("${pre.serviceName}-${pre.stage}")
                     if (props.vpcEndpoint != null) {
                         endpointConfiguration {
                             types(listOf(+"PRIVATE"))

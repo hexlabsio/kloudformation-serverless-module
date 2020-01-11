@@ -79,7 +79,7 @@ class Serverless(val globalRole: Role?, val globalWebsocketApi: Api?, val functi
             val lazyWebsocketApi = {
                 if (websocketApi == null) {
                     websocketApi = globalWebsocketApi(NoProps) {
-                        api(+stage + serviceName + "-websockets", +"WEBSOCKET", routeSelectionExpression) {
+                        api(+serviceName + "-websockets-" + stage, +"WEBSOCKET", routeSelectionExpression) {
                             modifyBuilder(it)
                         }
                     }
